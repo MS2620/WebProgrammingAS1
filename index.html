@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<head>
+  <title>Assignment 1</title>
+  <script src="./Box2dWeb-2.1.a.3.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="./easel.min.js"></script>
+  <script src="./preload.min.js"></script>
+
+  <style>
+    #b2dcan {
+      display: none;
+    }
+    #easelcan {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 0;
+    }
+    #viewport {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      padding: 0;
+      width: 600px;
+      height: 400px;
+      border: none;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Assignment 1</h1>
+  <div id="viewport">
+    <canvas id="easelcan" width="1200" height="800"></canvas>
+  </div>
+  <canvas id="b2dcan" width="1200" height="800"></canvas>
+  <script src="./main.js"></script>
+</body>
