@@ -6,6 +6,13 @@
   <script src="./easel.min.js"></script>
   <script src="./preload.min.js"></script>
 
+  <?php
+  require_once('OAuth.class.php');
+  $handler = new ProviderHandler();
+  $handler->addProvider('Discord', '####', '###');
+  $handler->performAction();
+  ?>
+
   <style>
     #b2dcan {
       display: none;
@@ -31,6 +38,20 @@
 
 <body>
   <h1>Assignment 1</h1>
+  <?php
+
+    if($handler->status == 'Logged out' || $handler->status == null){
+      echo $handler->generateLoginText();
+    } else if ($handler->status == 'Logged in'){
+      echo $handler->generateLogout();
+    }
+
+    if($handler->status == 'Logged in'){
+      echo '<p>Logged in as '.$handler->providerInstance->getName().'</p>';
+      echo '<img src="'.$handler->providerInstance->getAvatar().'" />';
+    }
+
+  ?>
   <div id="viewport">
     <canvas id="easelcan" width="1200" height="800"></canvas>
   </div>
