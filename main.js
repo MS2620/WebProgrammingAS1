@@ -431,9 +431,9 @@ function followHero() {
     var heroposx = player.GetBody().GetPosition().x * SCALE;
     var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
 
-    if (heroposx >= VP.left + (VP.width - AW.rightpad) && ltr) {
+    if (heroposx >= (VP.left + (VP.width - AW.rightpad)) && ltr) {
       leftposition = heroposx + AW.rightpad - VP.width;
-    } else if (heroposx <= -VP.left + AW.leftpad) {
+    } else if (heroposx <= (-VP.left) + AW.leftpad) {
       leftposition = heroposx - AW.leftpad;
     } else {
       leftposition = -VP.left;
@@ -449,9 +449,9 @@ function followHero() {
 
     var heroposy = player.GetBody().GetPosition().y * SCALE;
 
-    if (heroposy >= VP.top + (VP.height - AW.rightpad)) {
-      topposition = heroposy + AW.bottompad - VP.width;
-    } else if (heroposy <= -VP.top + AW.toppad) {
+    if (heroposy >= (VP.top + (VP.height - AW.rightpad))) {
+      topposition = heroposy + AW.bottompad - VP.height;
+    } else if (heroposy <= ((-VP.top) + AW.toppad)) {
       topposition = heroposy - AW.toppad;
     } else {
       topposition = -VP.top;
@@ -459,10 +459,25 @@ function followHero() {
 
     if (topposition < toplimitmin) {
       topposition = toplimitmin;
-    } else if (topposition > toplimitmax) {
+    }
+    if (topposition > toplimitmax) {
       topposition = toplimitmax;
     }
 
     $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
+
+    var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
+
+    var scale =
+      herovelocity < 0.8 && herovelocity > 0.1
+        ? 1.1
+        : herovelocity > 1.1
+        ? 0.8
+        : 1;
+
+    $("#easelcan").css({
+      transform: "scale(" + scale + ")",
+      transition: "transform 3000ms",
+    });
   }
 }
