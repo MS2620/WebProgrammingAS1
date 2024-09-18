@@ -9,7 +9,13 @@
   <?php
   require_once('OAuth.class.php');
   $handler = new ProviderHandler();
-  $handler->addProvider('Discord', '####', '###');
+  $env = parse_ini_file('.env');
+  $discordcid = $env['DISCORD_CID'];
+  $discordcs = $env['DISCORD_CSECRET'];
+  $githubcid = $env['GITHUB_CID'];
+  $githubcs = $env['GITHUB_CSECRET'];
+  $handler->addProvider('Discord', $discordcid, $discordcs);
+  $handler->addProvider('Github', $githubcid, $githubcs);
   $handler->performAction();
   ?>
 
@@ -17,13 +23,13 @@
     #b2dcan {
       display: none;
     }
-    #easelcan {
+    /* #easelcan {
       position: absolute;
       top: 0;
       left: 0;
       z-index: 0;
-    }
-    #viewport {
+    } */
+    /* #viewport {
       position: relative;
       z-index: 1;
       margin: 0;
@@ -32,7 +38,7 @@
       height: 400px;
       border: none;
       overflow: hidden;
-    }
+    } */
   </style>
 </head>
 
@@ -42,7 +48,7 @@
 
     if($handler->status == 'Logged out' || $handler->status == null){
       echo $handler->generateLoginText();
-    } else if ($handler->status == 'Logged in'){
+    } else {
       echo $handler->generateLogout();
     }
 

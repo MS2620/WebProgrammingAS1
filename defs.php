@@ -18,28 +18,14 @@ const PROVIDERLIST = array (
     [
         'providername' => 'Github',
         'data' => [
-            'authURL' => '',
-            'tokenURL' => '',
-            'apiURL' => '',
-            'revokeURL' => '',
-            'scope' => '',
-            'class' => 'OAuth'
-        ]
-    ],
-    [
-        'providername' => 'Reddit',
-        'data' => [
-            'authURL' => '',
-            'tokenURL' => '',
-            'apiURL' => '',
-            'revokeURL' => '',
-            'scope' => '',
-            'class' => 'OAuth'
+            'authURL' => 'https://github.com/login/oauth/authorize',
+            'tokenURL' => 'https://github.com/login/oauth/access_token',
+            'apiURL' => 'https://api.github.com/user',
+            'revokeURL' => 'https://github.com/application/########/grant',
+            'scope' => 'user',
+            'class' => 'OAuthGithub'
         ]
     ]
 )
-
-
-// https://discord.com/oauth2/authorize?client_id=1285552942065389618&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%2F&scope=identify
 
 ?>

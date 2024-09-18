@@ -21,7 +21,7 @@ var world = new b2World(new b2Vec2(0, 9.81), true);
 
 var easelCan, easelctx, loader, stage, stagewidth, stageheight;
 
-var easelground, easealsky, easealhill1, easealhill2, hero;
+var easelground, easealsky, easealhill1, easealhill2, hero, easelplat1;
 
 // Ground
 var ground = defineNewStatic(
@@ -49,6 +49,19 @@ var player = defineNewDynamic(
 );
 player.GetBody().IsFixedRotation = true;
 
+// Platforms
+var plat1 = defineNewStatic(
+  1.0, // density
+  0, // friction
+  0.2, // restitution
+  200, // X position
+  250, // Y position
+  100, // width
+  20, // height
+  "plat1", // object ID
+  0
+);
+
 function tick() {
   update();
   stage.update();
@@ -65,7 +78,7 @@ function update() {
   hero.x = player.GetBody().GetPosition().x * SCALE;
   hero.y = player.GetBody().GetPosition().y * SCALE;
 
-  followHero();
+  // followHero();
   world.DrawDebugData();
   world.ClearForces();
   for (var i in destroylist) {
@@ -87,30 +100,26 @@ var destroylist = [];
 // Keyboard Controls
 var keydown = false;
 $(document).keydown(function (e) {
-  switch (e.which) {
-    case 37: // left
+    if(e.keyCode == 37) {
       goleft();
-      break;
-    case 38: // up
+    }
+    if(e.keyCode == 38) {
       goup();
-      break;
-    case 39: // right
+    }
+    if(e.keyCode == 39) {
       goright();
-      break;
-    case 40: // down
+    }
+    if(e.keyCode == 40) {
       godown();
-      break;
-  }
+    }
 });
 
 $(document).keyup(function (e) {
-  switch (e.which) {
-    case 37: // left
-      stopleftright();
-      break;
-    case 39: // right
-      stopleftright();
-      break;
+  if(e.keyCode == 37) {
+    stopleftright();
+  }
+  if(e.keyCode == 39) {
+    stopleftright();
   }
 });
 
@@ -147,9 +156,15 @@ function goleft() {
     hero.gotoAndPlay("run");
     hero.scaleX = -1;
   }
-  player
-    .GetBody()
-    .SetLinearVelocity(new b2Vec2(-10, player.GetBody().GetLinearVelocity().y));
+
+  player.GetBody().ApplyImpulse(new b2Vec2(-9, 0), player.GetBody().GetWorldCenter());
+  if (player.GetBody().GetLinearVelocity().x < -10) {
+    player.GetBody().SetLinearVelocity(new b2Vec2(-10, player.GetBody().GetLinearVelocity().y));
+  }
+
+  // player
+  //   .GetBody()
+  //   .SetLinearVelocity(new b2Vec2(-10, player.GetBody().GetLinearVelocity().y));
 }
 
 function goright() {
@@ -157,20 +172,23 @@ function goright() {
     hero.gotoAndPlay("run");
     hero.scaleX = 1;
   }
-  player
-    .GetBody()
-    .SetLinearVelocity(new b2Vec2(10, player.GetBody().GetLinearVelocity().y));
+
+  player.GetBody().ApplyImpulse(new b2Vec2(9, 0), player.GetBody().GetWorldCenter());
+  if (player.GetBody().GetLinearVelocity().x > 10) {
+    player.GetBody().SetLinearVelocity(new b2Vec2(10, player.GetBody().GetLinearVelocity().y));
+  }
+
+  // player
+  //   .GetBody()
+  //   .SetLinearVelocity(new b2Vec2(10, player.GetBody().GetLinearVelocity().y));
 }
 
 function goup() {
   // Check if player is on the ground
   if (player.GetBody().GetLinearVelocity().y === 0) {
     hero.gotoAndPlay("jump");
-    player
-      .GetBody()
-      .SetLinearVelocity(
-        new b2Vec2(player.GetBody().GetLinearVelocity().x, -10)
-      );
+
+    player.GetBody().SetLinearVelocity(new b2Vec2(player.GetBody().GetLinearVelocity().x, -40));
   }
 }
 
@@ -183,9 +201,7 @@ function godown() {
 
 function stopleftright() {
   hero.gotoAndPlay("stand");
-  player
-    .GetBody()
-    .SetLinearVelocity(new b2Vec2(0, player.GetBody().GetLinearVelocity().y));
+  player.GetBody().SetLinearVelocity(new b2Vec2(0, player.GetBody().GetLinearVelocity().y));
 }
 
 function defineNewStatic(
@@ -317,6 +333,11 @@ function handleComplete() {
   easelground.x = 0;
   easelground.y = HEIGHT - groundimg.height;
 
+  // Create the platform
+  easelplat1 = makeHorizontalTile(loader.getResult("plat1"), 500, 64);
+  easelplat1.x = 200;
+  easelplat1.y = 400;
+
   // Create the hero
   var spritesheet = new createjs.SpriteSheet({
     framerate: 60,
@@ -330,7 +351,7 @@ function handleComplete() {
     },
     animations: {
       stand: [56, 57, "stand", 1],
-      run: [0, 25, "run", 1.5],
+      run: [0, 34, "run", 1],
       jump: [26, 63, "stand", 1],
       drop: [49, 57, "stand", 1],
     },
@@ -339,7 +360,8 @@ function handleComplete() {
   hero = new createjs.Sprite(spritesheet, "stand");
   hero.snapToPixel = true;
 
-  stage.addChild(easealsky, easelground, easealhill1, easealhill2, hero);
+
+  stage.addChild(easealsky, easelground, easealhill1, easealhill2, hero, easelplat1);
   createjs.Ticker.framerate = 60;
   createjs.Ticker.timingMode = createjs.Ticker.RAF;
   createjs.Ticker.addEventListener("tick", tick);
@@ -358,6 +380,7 @@ function init() {
     { src: "sky.png", id: "sky" },
     { src: "hill1.png", id: "hill1" },
     { src: "hill2.png", id: "hill2" },
+    { src: "ground.png", id: "plat1" },
   ];
 
   loader = new createjs.LoadQueue(false);
@@ -377,107 +400,107 @@ function init() {
 }
 
 // VIEWPORT
-var initialised = false;
-var animationcomplete = false;
+// var initialised = false;
+// var animationcomplete = false;
 
-function followHero() {
-  if (!initialised && !animationcomplete) {
-    // Update condition to allow initial run
-    $("#easelcan").css({
-      transform: "scale(0.8)",
-      top: "-210px",
-      left: "-400px",
-    });
-    initialised = true;
-    $("#easelcan").animate(
-      {
-        top: -400,
-        left: 0,
-        easing: "swing",
-      },
-      {
-        duration: 3000,
-        start: function () {
-          $("#easelcan").css({
-            transform: "scale(1)",
-            transition: "transform 3000ms",
-          });
-        },
-        complete: function () {
-          animationcomplete = true;
-        },
-      }
-    );
-  }
-  if (animationcomplete && initialised) {
-    var zoompadding = 100;
-    var VP = Object.create({});
-    VP.width = $("viewport").width();
-    VP.height = $("viewport").height();
-    VP.left = parseInt($("#easelcan").css("left"));
-    VP.top = parseInt($("#easelcan").css("top"));
-    var AW = Object.create({});
-    AW.leftpad = 100;
-    AW.rightpad = 200;
-    AW.toppad = 150;
-    AW.bottompad = 200;
-    var leftlimitmax = WIDTH - VP.width - zoompadding;
-    var leftlimitmin = zoompadding;
-    var toplimitmax = HEIGHT - VP.height - zoompadding;
-    var toplimitmin = zoompadding;
-    var leftposition = 0;
-    var topposition = 0;
+// function followHero() {
+//   if (!initialised && !animationcomplete) {
+//     // Update condition to allow initial run
+//     $("#easelcan").css({
+//       transform: "scale(0.8)",
+//       top: "-210px",
+//       left: "-400px",
+//     });
+//     initialised = true;
+//     $("#easelcan").animate(
+//       {
+//         top: -400,
+//         left: 0,
+//         easing: "swing",
+//       },
+//       {
+//         duration: 3000,
+//         start: function () {
+//           $("#easelcan").css({
+//             transform: "scale(1)",
+//             transition: "transform 3000ms",
+//           });
+//         },
+//         complete: function () {
+//           animationcomplete = true;
+//         },
+//       }
+//     );
+//   }
+//   if (animationcomplete && initialised) {
+//     var zoompadding = 100;
+//     var VP = Object.create({});
+//     VP.width = $("viewport").width();
+//     VP.height = $("viewport").height();
+//     VP.left = parseInt($("#easelcan").css("left"));
+//     VP.top = parseInt($("#easelcan").css("top"));
+//     var AW = Object.create({});
+//     AW.leftpad = 100;
+//     AW.rightpad = 200;
+//     AW.toppad = 150;
+//     AW.bottompad = 200;
+//     var leftlimitmax = WIDTH - VP.width - zoompadding;
+//     var leftlimitmin = zoompadding;
+//     var toplimitmax = HEIGHT - VP.height - zoompadding;
+//     var toplimitmin = zoompadding;
+//     var leftposition = 0;
+//     var topposition = 0;
 
-    var heroposx = player.GetBody().GetPosition().x * SCALE;
-    var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
+//     var heroposx = player.GetBody().GetPosition().x * SCALE;
+//     var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
 
-    if (heroposx >= (VP.left + (VP.width - AW.rightpad)) && ltr) {
-      leftposition = heroposx + AW.rightpad - VP.width;
-    } else if (heroposx <= (-VP.left) + AW.leftpad) {
-      leftposition = heroposx - AW.leftpad;
-    } else {
-      leftposition = -VP.left;
-    }
+//     if (heroposx >= (VP.left + (VP.width - AW.rightpad)) && ltr) {
+//       leftposition = heroposx + AW.rightpad - VP.width;
+//     } else if (heroposx <= (-VP.left) + AW.leftpad) {
+//       leftposition = heroposx - AW.leftpad;
+//     } else {
+//       leftposition = -VP.left;
+//     }
 
-    if (leftposition < leftlimitmin) {
-      leftposition = leftlimitmin;
-    } else if (leftposition > leftlimitmax) {
-      leftposition = leftlimitmax;
-    }
+//     if (leftposition < leftlimitmin) {
+//       leftposition = leftlimitmin;
+//     } else if (leftposition > leftlimitmax) {
+//       leftposition = leftlimitmax;
+//     }
 
-    $("#easelcan").css({ left: 0, transition: "left 34ms" });
+//     $("#easelcan").css({ left: 0, transition: "left 34ms" });
 
-    var heroposy = player.GetBody().GetPosition().y * SCALE;
+//     var heroposy = player.GetBody().GetPosition().y * SCALE;
 
-    if (heroposy >= (VP.top + (VP.height - AW.rightpad))) {
-      topposition = heroposy + AW.bottompad - VP.height;
-    } else if (heroposy <= ((-VP.top) + AW.toppad)) {
-      topposition = heroposy - AW.toppad;
-    } else {
-      topposition = -VP.top;
-    }
+//     if (heroposy >= (VP.top + (VP.height - AW.rightpad))) {
+//       topposition = heroposy + AW.bottompad - VP.height;
+//     } else if (heroposy <= ((-VP.top) + AW.toppad)) {
+//       topposition = heroposy - AW.toppad;
+//     } else {
+//       topposition = -VP.top;
+//     }
 
-    if (topposition < toplimitmin) {
-      topposition = toplimitmin;
-    }
-    if (topposition > toplimitmax) {
-      topposition = toplimitmax;
-    }
+//     if (topposition < toplimitmin) {
+//       topposition = toplimitmin;
+//     }
+//     if (topposition > toplimitmax) {
+//       topposition = toplimitmax;
+//     }
 
-    $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
+//     $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
 
-    var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
+//     var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
 
-    var scale =
-      herovelocity < 0.8 && herovelocity > 0.1
-        ? 1.1
-        : herovelocity > 1.1
-        ? 0.8
-        : 1;
+//     var scale =
+//       herovelocity < 0.8 && herovelocity > 0.1
+//         ? 1.1
+//         : herovelocity > 1.1
+//         ? 0.8
+//         : 1;
 
-    $("#easelcan").css({
-      transform: "scale(" + scale + ")",
-      transition: "transform 3000ms",
-    });
-  }
-}
+//     $("#easelcan").css({
+//       transform: "scale(" + scale + ")",
+//       transition: "transform 3000ms",
+//     });
+//   }
+// }
