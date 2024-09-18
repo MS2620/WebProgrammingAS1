@@ -21,7 +21,7 @@ var world = new b2World(new b2Vec2(0, 9.81), true);
 
 var easelCan, easelctx, loader, stage, stagewidth, stageheight;
 
-var easelground, easealsky, easealhill1, easealhill2, hero, easelplat1;
+var easelground, easealsky, easealhill1, easealhill2, hero, easelPlatforms;
 
 // Ground
 var ground = defineNewStatic(
@@ -36,6 +36,85 @@ var ground = defineNewStatic(
   0
 );
 
+// Platforms
+var platforms = [
+  // defineNewStatic(
+  //   1.0, // density
+  //   0.5, // friction
+  //   0.2, // restitution
+  //   520, // X position
+  //   400, // Y position
+  //   300, // width
+  //   21, // height
+  //   "plat1", // object ID
+  //   0
+  // ),
+  // defineNewStatic(
+  //   1.0, // density
+  //   0.5, // friction
+  //   0.2, // restitution
+  //   220, // X position
+  //   200, // Y position
+  //   300, // width
+  //   21, // height
+  //   "plat2", // object ID
+  //   0
+  // ),
+];
+
+createPlatforms();
+
+function createPlatforms() {
+  const numPlatforms = 3; // Specify how many platforms you want to create
+  const platformWidth = 300;
+  const platformHeight = 21;
+  const gap = 64; // Minimum gap between platforms
+
+  for (let i = 1; i <= numPlatforms; i++) {
+    let randomX, randomY, overlapping;
+
+    // Helper function to check if two platforms are too close (overlapping or gap < 64)
+    function isTooClose(x1, y1, x2, y2, width, height, gap) {
+      return (
+        Math.abs(x1 - x2) < width + gap && // Horizontal check
+        Math.abs(y1 - y2) < height + gap   // Vertical check
+      );
+    }
+
+    // Generate positions until no overlap and sufficient gap
+    do {
+      randomX = Math.random() * (WIDTH - platformWidth) + platformWidth / 2;
+      randomY = Math.random() * (HEIGHT - 400) + 200;
+      overlapping = false;
+
+      for (let platform of platforms) {
+        if (isTooClose(randomX, randomY, platform.x, platform.y, platformWidth, platformHeight, gap)) {
+          overlapping = true;
+          break;
+        }
+      }
+    } while (overlapping);
+
+    // Create and define a new platform
+    let platformID = "plat" + i;
+    var platform = defineNewStatic(
+      1.0, // density
+      0.5, // friction
+      0.2, // restitution
+      randomX, // X position
+      randomY, // Y position
+      platformWidth, // width
+      platformHeight, // height
+      platformID, // object ID
+      0 // angle
+    );
+
+    // Store the created platform
+    platforms.push(platform);
+
+  }
+}
+
 // Player
 var player = defineNewDynamic(
   1.0, // density
@@ -49,18 +128,6 @@ var player = defineNewDynamic(
 );
 player.GetBody().IsFixedRotation = true;
 
-// Platforms
-var plat1 = defineNewStatic(
-  1.0, // density
-  0, // friction
-  0.2, // restitution
-  200, // X position
-  250, // Y position
-  100, // width
-  20, // height
-  "plat1", // object ID
-  0
-);
 
 function tick() {
   update();
@@ -227,7 +294,7 @@ function defineNewStatic(
   fixDef.shape = new b2PolygonShape();
   fixDef.shape.SetAsBox(width / SCALE, height / SCALE);
   var thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
-  thisobj.GetBody().SetUserData({ id: objid });
+  thisobj.GetBody().SetUserData({ id: objid, x: x, y: y });
   return thisobj;
 }
 
@@ -334,9 +401,9 @@ function handleComplete() {
   easelground.y = HEIGHT - groundimg.height;
 
   // Create the platform
-  easelplat1 = makeHorizontalTile(loader.getResult("plat1"), 500, 64);
-  easelplat1.x = 200;
-  easelplat1.y = 400;
+  // platforms = makeHorizontalTile(loader.getResult("plat1"), 500, 60);
+  // platforms.x = platforms.x;
+  // platforms.y = platforms.y;
 
   // Create the hero
   var spritesheet = new createjs.SpriteSheet({
@@ -361,7 +428,7 @@ function handleComplete() {
   hero.snapToPixel = true;
 
 
-  stage.addChild(easealsky, easelground, easealhill1, easealhill2, hero, easelplat1);
+  stage.addChild(easealsky, easelground, easealhill1, easealhill2, hero);
   createjs.Ticker.framerate = 60;
   createjs.Ticker.timingMode = createjs.Ticker.RAF;
   createjs.Ticker.addEventListener("tick", tick);

@@ -21,7 +21,7 @@
 
   <style>
     #b2dcan {
-      display: none;
+      background-color: #000;
     }
     /* #easelcan {
       position: absolute;
