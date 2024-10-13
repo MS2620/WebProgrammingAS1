@@ -20,16 +20,16 @@
   ?>
 
   <style>
-    #b2dcan {
+    /* #b2dcan {
       background-color: #000;
-    }
-    /* #easelcan {
+    } */
+    #easelcan {
       position: absolute;
       top: 0;
       left: 0;
       z-index: 0;
-    } */
-    /* #viewport {
+    } 
+    #viewport {
       position: relative;
       z-index: 1;
       margin: 0;
@@ -38,7 +38,7 @@
       height: 400px;
       border: none;
       overflow: hidden;
-    } */
+    }
   </style>
 </head>
 
@@ -61,6 +61,6 @@
   <div id="viewport">
     <canvas id="easelcan" width="1200" height="800"></canvas>
   </div>
-  <canvas id="b2dcan" width="1200" height="800"></canvas>
+  <!-- <canvas id="b2dcan" width="1200" height="800"></canvas> -->
   <script src="./main.js"></script>
 </body>

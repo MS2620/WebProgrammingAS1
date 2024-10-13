@@ -17,117 +17,115 @@ var WIDTH = 1200;
 var HEIGHT = 800;
 var SCALE = 30;
 
-var world = new b2World(new b2Vec2(0, 9.81), true);
+// Constants for grid dimensions
+const CELL_WIDTH = 50; // Width of each cell
+const CELL_HEIGHT = 50; // Height of each cell
+const ROWS = Math.floor(HEIGHT / CELL_HEIGHT); // Calculate number of rows
+const COLS = Math.floor(WIDTH / CELL_WIDTH); // Calculate number of columns
 
+var world = new b2World(new b2Vec2(0, 9.81), true);
+// Objects for destruction
+var destroylist = [];
+
+var player;
 var easelCan, easelctx, loader, stage, stagewidth, stageheight;
 
-var easelground, easealsky, easealhill1, easealhill2, hero, easelPlatforms;
+var easelground, easealsky, easealhill1, easealhill2, hero;
+var platforms = [];
+var easelPlatforms = [];
 
-// Ground
-var ground = defineNewStatic(
-  1.0, // density
-  0, // friction
-  0.2, // restitution
-  WIDTH / 2, // X position
-  HEIGHT, // Y position
-  WIDTH / 2, // width
-  80, // height
-  "ground", // object ID
-  0
-);
+// Load the map
+fetch("./assets/map.txt") // Assuming your map.txt is in the 'assets' folder
+  .then((response) => response.text())
+  .then((data) => processMap(data)) // Process the map data
+  .catch((error) => console.error("Error loading map:", error));
 
-// Platforms
-var platforms = [
-  // defineNewStatic(
-  //   1.0, // density
-  //   0.5, // friction
-  //   0.2, // restitution
-  //   520, // X position
-  //   400, // Y position
-  //   300, // width
-  //   21, // height
-  //   "plat1", // object ID
-  //   0
-  // ),
-  // defineNewStatic(
-  //   1.0, // density
-  //   0.5, // friction
-  //   0.2, // restitution
-  //   220, // X position
-  //   200, // Y position
-  //   300, // width
-  //   21, // height
-  //   "plat2", // object ID
-  //   0
-  // ),
-];
+// Process the map content
+function processMap(data) {
+  const lines = data.split("\n"); // Split content into lines
 
-createPlatforms();
+  lines.forEach((line, rowIndex) => {
+    for (let colIndex = 0; colIndex < line.length; colIndex++) {
+      const char = line[colIndex];
 
-function createPlatforms() {
-  const numPlatforms = 3; // Specify how many platforms you want to create
-  const platformWidth = 300;
-  const platformHeight = 21;
-  const gap = 64; // Minimum gap between platforms
-
-  for (let i = 1; i <= numPlatforms; i++) {
-    let randomX, randomY, overlapping;
-
-    // Helper function to check if two platforms are too close (overlapping or gap < 64)
-    function isTooClose(x1, y1, x2, y2, width, height, gap) {
-      return (
-        Math.abs(x1 - x2) < width + gap && // Horizontal check
-        Math.abs(y1 - y2) < height + gap   // Vertical check
-      );
-    }
-
-    // Generate positions until no overlap and sufficient gap
-    do {
-      randomX = Math.random() * (WIDTH - platformWidth) + platformWidth / 2;
-      randomY = Math.random() * (HEIGHT - 400) + 200;
-      overlapping = false;
-
-      for (let platform of platforms) {
-        if (isTooClose(randomX, randomY, platform.x, platform.y, platformWidth, platformHeight, gap)) {
-          overlapping = true;
-          break;
-        }
+      if (char === "%") {
+        // Create platforms
+        createPlatforms(rowIndex, colIndex);
+      } else if (char === "P") {
+        // Place player
+        placePlayer(rowIndex, colIndex);
+      } else if (char === "#") {
+        // Create ground
+        createGround(rowIndex, colIndex);
       }
-    } while (overlapping);
-
-    // Create and define a new platform
-    let platformID = "plat" + i;
-    var platform = defineNewStatic(
-      1.0, // density
-      0.5, // friction
-      0.2, // restitution
-      randomX, // X position
-      randomY, // Y position
-      platformWidth, // width
-      platformHeight, // height
-      platformID, // object ID
-      0 // angle
-    );
-
-    // Store the created platform
-    platforms.push(platform);
-
-  }
+    }
+  });
 }
 
-// Player
-var player = defineNewDynamic(
-  1.0, // density
-  0, // friction
-  0.1, // restitution
-  70, // X position
-  200, // Y position
-  72, // width
-  140, // height
-  "hero" // object ID
-);
-player.GetBody().IsFixedRotation = true;
+function createGround(row, col) {
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
+  const positionY = HEIGHT - CELL_HEIGHT / 2; // Centered Y position for ground
 
+  // Create ground object
+  var ground = defineNewStatic(
+    1.0, // density
+    0, // friction
+    0.2, // restitution
+    positionX, // X position
+    positionY, // Y position
+    CELL_WIDTH, // width
+    CELL_HEIGHT, // height
+    "ground" + row + "_" + col, // Unique ID, to avoid duplicates
+    0
+  );
+
+  return ground;
+}
+
+function createPlatforms(row, col) {
+  // Define platform dimensions
+  const platformWidth = 300;
+  const platformHeight = 24;
+
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
+  const positionY = HEIGHT - (row * CELL_HEIGHT + platformHeight / 2); // Centered Y position for platform
+
+  // Create platform object
+  var platform = defineNewStatic(
+    1.0, // density
+    0.5, // friction
+    0.2, // restitution
+    positionX, // X position
+    positionY, // Y position
+    platformWidth, // width
+    platformHeight, // height
+    "plat" + row + "_" + col, // Unique ID
+    0 // angle
+  );
+
+  platforms.push(platform);
+}
+
+function placePlayer(row, col) {
+  // Define player dimensions
+  const playerWidth = 72;
+  const playerHeight = 140;
+
+  // Create player
+  player = defineNewDynamic(
+    1.0, // density
+    0, // friction
+    0.1, // restitution
+    col * CELL_WIDTH + CELL_WIDTH / 2, // Centered X position
+    row * CELL_HEIGHT + CELL_HEIGHT / 2, // Centered Y position
+    playerWidth, // width
+    playerHeight, // height
+    "hero" // object ID
+  );
+
+  player.GetBody().IsFixedRotation = true; // Prevent rotation
+  return player;
+}
 
 function tick() {
   update();
@@ -145,20 +143,18 @@ function update() {
   hero.x = player.GetBody().GetPosition().x * SCALE;
   hero.y = player.GetBody().GetPosition().y * SCALE;
 
-  // followHero();
   world.DrawDebugData();
+
   world.ClearForces();
   for (var i in destroylist) {
     world.DestroyBody(destroylist[i]);
   }
   destroylist.length = 0;
-  //   window.requestAnimationFrame(update);
+  followHero();
 }
+// window.requestAnimationFrame(update);
 
 init();
-
-// Objects for destruction
-var destroylist = [];
 
 // Mushrooms
 // var mycircle = defineNewDynamicCircle(1.0, 0.2, 0.1, 400, 250, 30, "acircle");
@@ -167,25 +163,25 @@ var destroylist = [];
 // Keyboard Controls
 var keydown = false;
 $(document).keydown(function (e) {
-    if(e.keyCode == 37) {
-      goleft();
-    }
-    if(e.keyCode == 38) {
-      goup();
-    }
-    if(e.keyCode == 39) {
-      goright();
-    }
-    if(e.keyCode == 40) {
-      godown();
-    }
+  if (e.keyCode == 37) {
+    goleft();
+  }
+  if (e.keyCode == 38) {
+    goup();
+  }
+  if (e.keyCode == 39) {
+    goright();
+  }
+  if (e.keyCode == 40) {
+    godown();
+  }
 });
 
 $(document).keyup(function (e) {
-  if(e.keyCode == 37) {
+  if (e.keyCode == 37) {
     stopleftright();
   }
-  if(e.keyCode == 39) {
+  if (e.keyCode == 39) {
     stopleftright();
   }
 });
@@ -224,9 +220,15 @@ function goleft() {
     hero.scaleX = -1;
   }
 
-  player.GetBody().ApplyImpulse(new b2Vec2(-9, 0), player.GetBody().GetWorldCenter());
+  player
+    .GetBody()
+    .ApplyImpulse(new b2Vec2(-9, 0), player.GetBody().GetWorldCenter());
   if (player.GetBody().GetLinearVelocity().x < -10) {
-    player.GetBody().SetLinearVelocity(new b2Vec2(-10, player.GetBody().GetLinearVelocity().y));
+    player
+      .GetBody()
+      .SetLinearVelocity(
+        new b2Vec2(-10, player.GetBody().GetLinearVelocity().y)
+      );
   }
 
   // player
@@ -240,9 +242,15 @@ function goright() {
     hero.scaleX = 1;
   }
 
-  player.GetBody().ApplyImpulse(new b2Vec2(9, 0), player.GetBody().GetWorldCenter());
+  player
+    .GetBody()
+    .ApplyImpulse(new b2Vec2(9, 0), player.GetBody().GetWorldCenter());
   if (player.GetBody().GetLinearVelocity().x > 10) {
-    player.GetBody().SetLinearVelocity(new b2Vec2(10, player.GetBody().GetLinearVelocity().y));
+    player
+      .GetBody()
+      .SetLinearVelocity(
+        new b2Vec2(10, player.GetBody().GetLinearVelocity().y)
+      );
   }
 
   // player
@@ -255,7 +263,11 @@ function goup() {
   if (player.GetBody().GetLinearVelocity().y === 0) {
     hero.gotoAndPlay("jump");
 
-    player.GetBody().SetLinearVelocity(new b2Vec2(player.GetBody().GetLinearVelocity().x, -40));
+    player
+      .GetBody()
+      .SetLinearVelocity(
+        new b2Vec2(player.GetBody().GetLinearVelocity().x, -40)
+      );
   }
 }
 
@@ -268,7 +280,9 @@ function godown() {
 
 function stopleftright() {
   hero.gotoAndPlay("stand");
-  player.GetBody().SetLinearVelocity(new b2Vec2(0, player.GetBody().GetLinearVelocity().y));
+  player
+    .GetBody()
+    .SetLinearVelocity(new b2Vec2(0, player.GetBody().GetLinearVelocity().y));
 }
 
 function defineNewStatic(
@@ -294,7 +308,9 @@ function defineNewStatic(
   fixDef.shape = new b2PolygonShape();
   fixDef.shape.SetAsBox(width / SCALE, height / SCALE);
   var thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
-  thisobj.GetBody().SetUserData({ id: objid, x: x, y: y });
+  thisobj
+    .GetBody()
+    .SetUserData({ id: objid, x: x, y: y, width: width, height: height });
   return thisobj;
 }
 
@@ -400,10 +416,29 @@ function handleComplete() {
   easelground.x = 0;
   easelground.y = HEIGHT - groundimg.height;
 
-  // Create the platform
-  // platforms = makeHorizontalTile(loader.getResult("plat1"), 500, 60);
-  // platforms.x = platforms.x;
-  // platforms.y = platforms.y;
+  platforms.map((platform) => {
+    var platformWidth = 300; // Define your platform width (same as in Box2D)
+    var platformHeight = 21; // Define your platform height (same as in Box2D)
+
+    // Create a new platform visual
+    var allPlatforms = makeHorizontalTile(
+      loader.getResult("plat1"),
+      500,
+      platformHeight
+    );
+
+    // Get Box2D platform's position (centered in Box2D)
+    var platformBody = platform.GetBody().GetUserData();
+    var platformX = platformBody.x - platformWidth; // Adjust for EaselJS (top-left alignment)
+    var platformY = platformBody.y - platformHeight; // Adjust for EaselJS (top-left alignment)
+
+    // Position the EaselJS platform
+    allPlatforms.x = platformX;
+    allPlatforms.y = platformY;
+
+    // Add platform to the list
+    easelPlatforms.push(allPlatforms);
+  });
 
   // Create the hero
   var spritesheet = new createjs.SpriteSheet({
@@ -418,7 +453,7 @@ function handleComplete() {
     },
     animations: {
       stand: [56, 57, "stand", 1],
-      run: [0, 34, "run", 1],
+      run: [0, 34, "run", 1.5],
       jump: [26, 63, "stand", 1],
       drop: [49, 57, "stand", 1],
     },
@@ -427,8 +462,15 @@ function handleComplete() {
   hero = new createjs.Sprite(spritesheet, "stand");
   hero.snapToPixel = true;
 
+  stage.addChild(
+    easealsky,
+    easelground,
+    easealhill1,
+    easealhill2,
+    hero,
+    ...easelPlatforms
+  );
 
-  stage.addChild(easealsky, easelground, easealhill1, easealhill2, hero);
   createjs.Ticker.framerate = 60;
   createjs.Ticker.timingMode = createjs.Ticker.RAF;
   createjs.Ticker.addEventListener("tick", tick);
@@ -447,7 +489,7 @@ function init() {
     { src: "sky.png", id: "sky" },
     { src: "hill1.png", id: "hill1" },
     { src: "hill2.png", id: "hill2" },
-    { src: "ground.png", id: "plat1" },
+    { src: "platform.png", id: "plat1" },
   ];
 
   loader = new createjs.LoadQueue(false);
@@ -457,117 +499,119 @@ function init() {
   /*
   Debug Draw
   */
-  var debugDraw = new b2DebugDraw();
-  debugDraw.SetSprite(document.getElementById("b2dcan").getContext("2d"));
-  debugDraw.SetDrawScale(SCALE);
-  debugDraw.SetFillAlpha(0.3);
-  debugDraw.SetLineThickness(1.0);
-  debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
-  world.SetDebugDraw(debugDraw);
+  // var debugDraw = new b2DebugDraw();
+  // debugDraw.SetSprite(document.getElementById("b2dcan").getContext("2d"));
+  // debugDraw.SetDrawScale(SCALE);
+  // debugDraw.SetFillAlpha(0.3);
+  // debugDraw.SetLineThickness(1.0);
+  // debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+  // world.SetDebugDraw(debugDraw);
 }
 
 // VIEWPORT
-// var initialised = false;
-// var animationcomplete = false;
+var initialised = false;
+var animationcomplete = false;
 
-// function followHero() {
-//   if (!initialised && !animationcomplete) {
-//     // Update condition to allow initial run
-//     $("#easelcan").css({
-//       transform: "scale(0.8)",
-//       top: "-210px",
-//       left: "-400px",
-//     });
-//     initialised = true;
-//     $("#easelcan").animate(
-//       {
-//         top: -400,
-//         left: 0,
-//         easing: "swing",
-//       },
-//       {
-//         duration: 3000,
-//         start: function () {
-//           $("#easelcan").css({
-//             transform: "scale(1)",
-//             transition: "transform 3000ms",
-//           });
-//         },
-//         complete: function () {
-//           animationcomplete = true;
-//         },
-//       }
-//     );
-//   }
-//   if (animationcomplete && initialised) {
-//     var zoompadding = 100;
-//     var VP = Object.create({});
-//     VP.width = $("viewport").width();
-//     VP.height = $("viewport").height();
-//     VP.left = parseInt($("#easelcan").css("left"));
-//     VP.top = parseInt($("#easelcan").css("top"));
-//     var AW = Object.create({});
-//     AW.leftpad = 100;
-//     AW.rightpad = 200;
-//     AW.toppad = 150;
-//     AW.bottompad = 200;
-//     var leftlimitmax = WIDTH - VP.width - zoompadding;
-//     var leftlimitmin = zoompadding;
-//     var toplimitmax = HEIGHT - VP.height - zoompadding;
-//     var toplimitmin = zoompadding;
-//     var leftposition = 0;
-//     var topposition = 0;
+function followHero() {
+  if (!initialised && !animationcomplete) {
+    // Update condition to allow initial run
+    $("#easelcan").css({
+      transform: "scale(0.8)",
+      top: "-210px",
+      left: "-400px",
+    });
+    initialised = true;
+    $("#easelcan").animate(
+      {
+        top: -400,
+        left: 0,
+        easing: "swing",
+      },
+      {
+        duration: 3000,
+        start: function () {
+          $("#easelcan").css({
+            transform: "scale(1)",
+            transition: "transform 3000ms",
+          });
+        },
+        complete: function () {
+          animationcomplete = true;
+        },
+      }
+    );
+  }
+  if (animationcomplete && initialised) {
+    var zoompadding = 100;
+    var VP = Object.create({});
+    VP.width = $("viewport").width();
+    VP.height = $("viewport").height();
+    VP.left = parseInt($("#easelcan").css("left"));
+    VP.top = parseInt($("#easelcan").css("top"));
+    var AW = Object.create({});
+    AW.leftpad = 100;
+    AW.rightpad = 200;
+    AW.toppad = 150;
+    AW.bottompad = 200;
+    var leftlimitmax = WIDTH - VP.width - zoompadding;
+    var leftlimitmin = zoompadding;
+    var toplimitmax = HEIGHT - VP.height - zoompadding;
+    var toplimitmin = zoompadding;
+    var leftposition = 0;
+    var topposition = 0;
 
-//     var heroposx = player.GetBody().GetPosition().x * SCALE;
-//     var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
+    var heroposx = player.GetBody().GetPosition().x * SCALE;
+    var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
 
-//     if (heroposx >= (VP.left + (VP.width - AW.rightpad)) && ltr) {
-//       leftposition = heroposx + AW.rightpad - VP.width;
-//     } else if (heroposx <= (-VP.left) + AW.leftpad) {
-//       leftposition = heroposx - AW.leftpad;
-//     } else {
-//       leftposition = -VP.left;
-//     }
+    if (heroposx >= VP.left + (VP.width - AW.rightpad) && ltr) {
+      leftposition = heroposx + AW.rightpad - VP.width;
+    } else if (heroposx <= -VP.left + AW.leftpad) {
+      leftposition = heroposx - AW.leftpad;
+    } else {
+      leftposition = -VP.left;
+    }
 
-//     if (leftposition < leftlimitmin) {
-//       leftposition = leftlimitmin;
-//     } else if (leftposition > leftlimitmax) {
-//       leftposition = leftlimitmax;
-//     }
+    if (leftposition < leftlimitmin) {
+      leftposition = leftlimitmin;
+    } else if (leftposition > leftlimitmax) {
+      leftposition = leftlimitmax;
+    }
 
-//     $("#easelcan").css({ left: 0, transition: "left 34ms" });
+    $("#easelcan").css({ left: 0, transition: "left 34ms" });
 
-//     var heroposy = player.GetBody().GetPosition().y * SCALE;
+    var heroposy = player.GetBody().GetPosition().y * SCALE;
 
-//     if (heroposy >= (VP.top + (VP.height - AW.rightpad))) {
-//       topposition = heroposy + AW.bottompad - VP.height;
-//     } else if (heroposy <= ((-VP.top) + AW.toppad)) {
-//       topposition = heroposy - AW.toppad;
-//     } else {
-//       topposition = -VP.top;
-//     }
+    if (heroposy >= VP.top + (VP.height - AW.rightpad)) {
+      topposition = heroposy + AW.bottompad - VP.height;
+    } else if (heroposy <= -VP.top + AW.toppad) {
+      topposition = heroposy - AW.toppad;
+    } else {
+      topposition = -VP.top;
+    }
 
-//     if (topposition < toplimitmin) {
-//       topposition = toplimitmin;
-//     }
-//     if (topposition > toplimitmax) {
-//       topposition = toplimitmax;
-//     }
+    if (topposition < toplimitmin) {
+      topposition = toplimitmin;
+    }
+    if (topposition > toplimitmax) {
+      topposition = toplimitmax;
+    }
 
-//     $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
+    $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
 
-//     var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
+    var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
 
-//     var scale =
-//       herovelocity < 0.8 && herovelocity > 0.1
-//         ? 1.1
-//         : herovelocity > 1.1
-//         ? 0.8
-//         : 1;
+    console.log(herovelocity);
 
-//     $("#easelcan").css({
-//       transform: "scale(" + scale + ")",
-//       transition: "transform 3000ms",
-//     });
-//   }
-// }
+    var scale =
+      herovelocity < 0.8 && herovelocity > 0.1
+        ? 1.1
+        : herovelocity > 1.1
+        ? 0.8
+        : 1;
+
+    $("#easelcan").css({
+      transform: "scale(" + scale + ")",
+      transition: "transform 3000ms",
+    });
+  }
+}
