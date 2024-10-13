@@ -23,7 +23,7 @@
     /* #b2dcan {
       background-color: #000;
     } */
-    #easelcan {
+    /* #easelcan {
       position: absolute;
       top: 0;
       left: 0;
@@ -38,7 +38,7 @@
       height: 400px;
       border: none;
       overflow: hidden;
-    }
+    } */
   </style>
 </head>
 

@@ -88,7 +88,7 @@ function createPlatforms(row, col) {
   const platformHeight = 24;
 
   const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
-  const positionY = HEIGHT - (row * CELL_HEIGHT + platformHeight / 2); // Centered Y position for platform
+  const positionY = row * CELL_HEIGHT + platformHeight / 2; // Centered Y position for platform
 
   // Create platform object
   var platform = defineNewStatic(
