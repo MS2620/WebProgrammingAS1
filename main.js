@@ -13,7 +13,7 @@ var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
 var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
 
 // Define the world
-var WIDTH = 1200;
+var WIDTH = 2400;
 var HEIGHT = 800;
 var SCALE = 30;
 
