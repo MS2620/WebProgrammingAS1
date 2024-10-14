@@ -45,18 +45,31 @@ function processMap(data) {
   const lines = data.split("\n"); // Split content into lines
 
   lines.forEach((line, rowIndex) => {
+    let colStart = -1; // Track the start of a platform
+
     for (let colIndex = 0; colIndex < line.length; colIndex++) {
       const char = line[colIndex];
 
       if (char === "%") {
-        // Create platforms
-        createPlatforms(rowIndex, colIndex);
-      } else if (char === "P") {
-        // Place player
-        placePlayer(rowIndex, colIndex);
-      } else if (char === "#") {
-        // Create ground
-        createGround(rowIndex, colIndex);
+        // If this is the start of a platform, mark the start
+        if (colStart === -1) {
+          colStart = colIndex;
+        }
+      } else {
+        // If we reach the end of a platform, create it
+        if (colStart !== -1) {
+          createPlatforms(rowIndex, colStart, colIndex - 1); // Pass start and end columns
+          colStart = -1; // Reset the start
+        }
+
+        // Process other characters
+        if (char === "P") {
+          // Place player
+          placePlayer(rowIndex, colIndex);
+        } else if (char === "#") {
+          // Create ground
+          createGround(rowIndex, colIndex);
+        }
       }
     }
   });
@@ -67,7 +80,7 @@ function createGround(row, col) {
   const positionY = HEIGHT - CELL_HEIGHT / 2; // Centered Y position for ground
 
   // Create ground object
-  var ground = defineNewStatic(
+  return defineNewStatic(
     1.0, // density
     0, // friction
     0.2, // restitution
@@ -78,20 +91,18 @@ function createGround(row, col) {
     "ground" + row + "_" + col, // Unique ID, to avoid duplicates
     0
   );
-
-  return ground;
 }
 
-function createPlatforms(row, col) {
+function createPlatforms(row, colStart, colEnd) {
   // Define platform dimensions
-  const platformWidth = 300;
   const platformHeight = 24;
+  const platformWidth = (colEnd - colStart + 1) * CELL_WIDTH; // Width based on the number of columns
 
-  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
+  const positionX = ((colStart + colEnd) / 2) * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
   const positionY = row * CELL_HEIGHT + platformHeight / 2; // Centered Y position for platform
 
   // Create platform object
-  var platform = defineNewStatic(
+  const platform = defineNewStatic(
     1.0, // density
     0.5, // friction
     0.2, // restitution
@@ -99,7 +110,7 @@ function createPlatforms(row, col) {
     positionY, // Y position
     platformWidth, // width
     platformHeight, // height
-    "plat" + row + "_" + col, // Unique ID
+    "plat" + row + "_" + colStart + "_" + colEnd, // Unique ID
     0 // angle
   );
 
@@ -161,27 +172,27 @@ init();
 // var mycircle2 = defineNewDynamicCircle(1.0, 0.2, 0.1, 385, 140, 30, "bcircle");
 
 // Keyboard Controls
-var keydown = false;
+const keydown = false;
 $(document).keydown(function (e) {
-  if (e.keyCode == 37) {
+  if (e.keyCode === 37) {
     goleft();
   }
-  if (e.keyCode == 38) {
+  if (e.keyCode === 38) {
     goup();
   }
-  if (e.keyCode == 39) {
+  if (e.keyCode === 39) {
     goright();
   }
-  if (e.keyCode == 40) {
+  if (e.keyCode === 40) {
     godown();
   }
 });
 
 $(document).keyup(function (e) {
-  if (e.keyCode == 37) {
+  if (e.keyCode === 37) {
     stopleftright();
   }
-  if (e.keyCode == 39) {
+  if (e.keyCode === 39) {
     stopleftright();
   }
 });
@@ -197,15 +208,15 @@ listener.EndContact = function (contact) {
   console.log("End Contact:" + contact.GetFixtureA().GetBody().GetUserData());
 };
 listener.PostSolve = function (contact, impulse) {
-  var fixa = contact.GetFixtureA().GetBody().GetUserData().id;
-  var fixb = contact.GetFixtureB().GetBody().GetUserData().id;
+  const fixa = contact.GetFixtureA().GetBody().GetUserData().id;
+  const fixb = contact.GetFixtureB().GetBody().GetUserData().id;
   console.log(
     fixa + " hits " + fixb + " with imp:" + impulse.normalImpulses[0]
   );
 
   if (
-    (fixa == "hero" && fixb == "acircle") ||
-    (fixa == "hero" && fixb == "bcircle")
+    (fixa === "hero" && fixb === "acircle") ||
+    (fixa === "hero" && fixb === "bcircle")
   ) {
     destroylist = destroylist.concat([contact.GetFixtureB().GetBody()]);
   }
@@ -296,18 +307,18 @@ function defineNewStatic(
   objid,
   angle
 ) {
-  var fixDef = new b2FixtureDef();
+  const fixDef = new b2FixtureDef();
   fixDef.density = density;
   fixDef.friction = friction;
   fixDef.restitution = restitution;
-  var bodyDef = new b2BodyDef();
+  const bodyDef = new b2BodyDef();
   bodyDef.type = b2Body.b2_staticBody;
   bodyDef.position.x = x / SCALE;
   bodyDef.position.y = y / SCALE;
   bodyDef.angle = angle;
   fixDef.shape = new b2PolygonShape();
   fixDef.shape.SetAsBox(width / SCALE, height / SCALE);
-  var thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
+  const thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
   thisobj
     .GetBody()
     .SetUserData({ id: objid, x: x, y: y, width: width, height: height });
@@ -324,18 +335,18 @@ function defineNewDynamic(
   height,
   objid
 ) {
-  var fixDef = new b2FixtureDef();
+  const fixDef = new b2FixtureDef();
   fixDef.density = density;
   fixDef.friction = friction;
   fixDef.restitution = restitution;
-  var bodyDef = new b2BodyDef();
+  const bodyDef = new b2BodyDef();
   bodyDef.type = b2Body.b2_dynamicBody;
   bodyDef.position.x = x / SCALE;
   bodyDef.position.y = y / SCALE;
   bodyDef.fixedRotation = true; // Set fixedRotation to true
   fixDef.shape = new b2PolygonShape();
   fixDef.shape.SetAsBox(width / SCALE, height / SCALE);
-  var thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
+  const thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
   thisobj.GetBody().SetUserData({ id: objid });
   return thisobj;
 }
@@ -347,26 +358,26 @@ function defineNewDynamicCircle(
   x,
   y,
   r,
-  objid
+  objidconst
 ) {
-  var fixDef = new b2FixtureDef();
+  const fixDef = new b2FixtureDef();
   fixDef.density = density;
   fixDef.friction = friction;
   fixDef.restitution = restitution;
-  var bodyDef = new b2BodyDef();
+  const bodyDef = new b2BodyDef();
   bodyDef.type = b2Body.b2_dynamicBody;
   bodyDef.position.x = x / SCALE;
   bodyDef.position.y = y / SCALE;
   fixDef.shape = new b2CircleShape(r / SCALE);
-  var thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
+  const thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
   thisobj.GetBody().SetUserData({ id: objid });
   return thisobj;
 }
 
 function makeBitmap(ldrimg, b2x, b2y) {
-  var theimage = new createjs.Bitmap(ldrimg);
-  var scalex = (b2x * 2) / theimage.image.naturalWidth;
-  var scaley = (b2y * 2) / theimage.image.naturalHeight;
+  const theimage = new createjs.Bitmap(ldrimg);
+  const scalex = (b2x * 2) / theimage.image.naturalWidth;
+  const scaley = (b2y * 2) / theimage.image.naturalHeight;
   theimage.scaleX = scalex;
   theimage.scaleY = scaley;
   theimage.regX = theimage.image.width / 2;
@@ -375,7 +386,7 @@ function makeBitmap(ldrimg, b2x, b2y) {
 }
 
 function makeHorizontalTile(ldrimg, fillw, tilew) {
-  var theimage = new createjs.Shape();
+  const theimage = new createjs.Shape();
   theimage.graphics
     .beginBitmapFill(ldrimg)
     .drawRect(0, 0, fillw + ldrimg.width, ldrimg.height);
@@ -385,7 +396,7 @@ function makeHorizontalTile(ldrimg, fillw, tilew) {
 }
 
 function handleComplete() {
-  var groundimg = loader.getResult("ground");
+  const groundimg = loader.getResult("ground");
 
   // Create the sky
   easealsky = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
@@ -393,7 +404,7 @@ function handleComplete() {
   easealsky.y = 0;
 
   // Create the hills
-  var hill1img = loader.getResult("hill1");
+  const hill1img = loader.getResult("hill1");
   easealhill1 = makeBitmap(
     loader.getResult("hill1"),
     hill1img.width,
@@ -402,7 +413,7 @@ function handleComplete() {
   easealhill1.x = Math.random() * stagewidth;
   easealhill1.y = HEIGHT - easealhill1.image.height - groundimg.height;
 
-  var hill2img = loader.getResult("hill2");
+  const hill2img = loader.getResult("hill2");
   easealhill2 = makeBitmap(
     loader.getResult("hill2"),
     hill2img.width,
@@ -417,20 +428,21 @@ function handleComplete() {
   easelground.y = HEIGHT - groundimg.height;
 
   platforms.map((platform) => {
-    var platformWidth = 300; // Define your platform width (same as in Box2D)
-    var platformHeight = 21; // Define your platform height (same as in Box2D)
+    console.log(platform.GetBody().GetUserData());
+    const platformWidth = platform.GetBody().GetUserData().width; // Define your platform width (same as in Box2D)
+    const platformHeight = platform.GetBody().GetUserData().height; // Define your platform height (same as in Box2D)
 
     // Create a new platform visual
-    var allPlatforms = makeHorizontalTile(
+    const allPlatforms = makeHorizontalTile(
       loader.getResult("plat1"),
-      500,
+      platformWidth * 1.25,
       platformHeight
     );
 
     // Get Box2D platform's position (centered in Box2D)
-    var platformBody = platform.GetBody().GetUserData();
-    var platformX = platformBody.x - platformWidth; // Adjust for EaselJS (top-left alignment)
-    var platformY = platformBody.y - platformHeight; // Adjust for EaselJS (top-left alignment)
+    const platformBody = platform.GetBody().GetUserData();
+    const platformX = platformBody.x - platformWidth; // Adjust for EaselJS (top-left alignment)
+    const platformY = platformBody.y - platformHeight; // Adjust for EaselJS (top-left alignment)
 
     // Position the EaselJS platform
     allPlatforms.x = platformX;
@@ -441,7 +453,7 @@ function handleComplete() {
   });
 
   // Create the hero
-  var spritesheet = new createjs.SpriteSheet({
+  const spritesheet = new createjs.SpriteSheet({
     framerate: 60,
     images: [loader.getResult("hero")],
     frames: {
@@ -483,7 +495,7 @@ function init() {
   stage.snapPixelsEnabled = true;
   stagewidth = stage.canvas.width;
   stageheight = stage.canvas.height;
-  var manifest = [
+  const manifest = [
     { src: "hero.png", id: "hero" },
     { src: "ground.png", id: "ground" },
     { src: "sky.png", id: "sky" },
@@ -499,18 +511,18 @@ function init() {
   /*
   Debug Draw
   */
-  // var debugDraw = new b2DebugDraw();
-  // debugDraw.SetSprite(document.getElementById("b2dcan").getContext("2d"));
-  // debugDraw.SetDrawScale(SCALE);
-  // debugDraw.SetFillAlpha(0.3);
-  // debugDraw.SetLineThickness(1.0);
-  // debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
-  // world.SetDebugDraw(debugDraw);
+  var debugDraw = new b2DebugDraw();
+  debugDraw.SetSprite(document.getElementById("b2dcan").getContext("2d"));
+  debugDraw.SetDrawScale(SCALE);
+  debugDraw.SetFillAlpha(0.3);
+  debugDraw.SetLineThickness(1.0);
+  debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+  world.SetDebugDraw(debugDraw);
 }
 
 // VIEWPORT
-var initialised = false;
-var animationcomplete = false;
+let initialised = false;
+let animationcomplete = false;
 
 function followHero() {
   if (!initialised && !animationcomplete) {
