@@ -30,7 +30,15 @@ var destroylist = [];
 var player;
 var easelCan, easelctx, loader, stage, stagewidth, stageheight;
 
-var easelground, easealsky, easealhill1, easealhill2, hero;
+var easelground,
+  easelground2,
+  easelground3,
+  easelsky,
+  easelsky2,
+  easelhill,
+  easealhill1,
+  easealhill2,
+  hero;
 var platforms = [];
 var easelPlatforms = [];
 
@@ -163,7 +171,7 @@ function update() {
   destroylist.length = 0;
   followHero();
 }
-// window.requestAnimationFrame(update);
+window.requestAnimationFrame(update);
 
 init();
 
@@ -399,33 +407,21 @@ function handleComplete() {
   const groundimg = loader.getResult("ground");
 
   // Create the sky
-  easealsky = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
-  easealsky.x = 0;
-  easealsky.y = 0;
 
-  // Create the hills
-  const hill1img = loader.getResult("hill1");
-  easealhill1 = makeBitmap(
-    loader.getResult("hill1"),
-    hill1img.width,
-    hill1img.height
-  );
-  easealhill1.x = Math.random() * stagewidth;
-  easealhill1.y = HEIGHT - easealhill1.image.height - groundimg.height;
+  easelsky = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
+  easelsky2 = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
 
-  const hill2img = loader.getResult("hill2");
-  easealhill2 = makeBitmap(
-    loader.getResult("hill2"),
-    hill2img.width,
-    hill2img.height
-  );
-  easealhill2.x = Math.random() * stagewidth;
-  easealhill2.y = HEIGHT - easealhill2.image.height - groundimg.height;
+  easelsky.x = 0;
+  easelsky2.x = stagewidth;
+  stage.addChild(easelsky, easelsky2);
 
   // Create the ground
   easelground = makeHorizontalTile(loader.getResult("ground"), stagewidth, 64);
   easelground.x = 0;
   easelground.y = HEIGHT - groundimg.height;
+  easelground2 = makeHorizontalTile(loader.getResult("ground"), stagewidth, 64);
+  easelground2.x = stagewidth;
+  easelground2.y = HEIGHT - groundimg.height;
 
   platforms.map((platform) => {
     console.log(platform.GetBody().GetUserData());
@@ -475,8 +471,9 @@ function handleComplete() {
   hero.snapToPixel = true;
 
   stage.addChild(
-    easealsky,
     easelground,
+    easelground2,
+    easelground3,
     easealhill1,
     easealhill2,
     hero,
@@ -495,6 +492,7 @@ function init() {
   stage.snapPixelsEnabled = true;
   stagewidth = stage.canvas.width;
   stageheight = stage.canvas.height;
+
   const manifest = [
     { src: "hero.png", id: "hero" },
     { src: "ground.png", id: "ground" },
@@ -524,106 +522,132 @@ function init() {
 let initialised = false;
 let animationcomplete = false;
 
+// function followHero() {
+//   if (!initialised && !animationcomplete) {
+//     // Update condition to allow initial run
+//     $("#easelcan").css({
+//       transform: "scale(0.8)",
+//       top: "-210px",
+//       left: "-400px",
+//     });
+//     initialised = true;
+//     $("#easelcan").animate(
+//       {
+//         top: -400,
+//         left: 0,
+//         easing: "swing",
+//       },
+//       {
+//         duration: 3000,
+//         start: function () {
+//           $("#easelcan").css({
+//             transform: "scale(1)",
+//             transition: "transform 3000ms",
+//           });
+//         },
+//         complete: function () {
+//           animationcomplete = true;
+//         },
+//       }
+//     );
+//   }
+//   if (animationcomplete && initialised) {
+//     var zoompadding = 100;
+//     var VP = Object.create({});
+//     VP.width = $("viewport").width();
+//     VP.height = $("viewport").height();
+//     VP.left = parseInt($("#easelcan").css("left"));
+//     VP.top = parseInt($("#easelcan").css("top"));
+//     var AW = Object.create({});
+//     AW.leftpad = 100;
+//     AW.rightpad = 200;
+//     AW.toppad = 150;
+//     AW.bottompad = 200;
+//     var leftlimitmax = WIDTH - VP.width - zoompadding;
+//     var leftlimitmin = zoompadding;
+//     var toplimitmax = HEIGHT - VP.height - zoompadding;
+//     var toplimitmin = zoompadding;
+//     var leftposition = 0;
+//     var topposition = 0;
+
+//     var heroposx = player.GetBody().GetPosition().x * SCALE;
+//     var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
+
+//     if (heroposx >= VP.left + (VP.width - AW.rightpad) && ltr) {
+//       leftposition = heroposx + AW.rightpad - VP.width;
+//     } else if (heroposx <= -VP.left + AW.leftpad) {
+//       leftposition = heroposx - AW.leftpad;
+//     } else {
+//       leftposition = -VP.left;
+//     }
+
+//     if (leftposition < leftlimitmin) {
+//       leftposition = leftlimitmin;
+//     } else if (leftposition > leftlimitmax) {
+//       leftposition = leftlimitmax;
+//     }
+
+//     $("#easelcan").css({ left: 0, transition: "left 34ms" });
+
+//     var heroposy = player.GetBody().GetPosition().y * SCALE;
+
+//     if (heroposy >= VP.top + (VP.height - AW.rightpad)) {
+//       topposition = heroposy + AW.bottompad - VP.height;
+//     } else if (heroposy <= -VP.top + AW.toppad) {
+//       topposition = heroposy - AW.toppad;
+//     } else {
+//       topposition = -VP.top;
+//     }
+
+//     if (topposition < toplimitmin) {
+//       topposition = toplimitmin;
+//     }
+//     if (topposition > toplimitmax) {
+//       topposition = toplimitmax;
+//     }
+
+//     $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
+
+//     var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
+
+//     console.log(herovelocity);
+
+//     var scale =
+//       herovelocity < 0.8 && herovelocity > 0.1
+//         ? 1.1
+//         : herovelocity > 1.1
+//         ? 0.8
+//         : 1;
+
+//     $("#easelcan").css({
+//       transform: "scale(" + scale + ")",
+//       transition: "transform 3000ms",
+//     });
+//   }
+// }
+
 function followHero() {
-  if (!initialised && !animationcomplete) {
-    // Update condition to allow initial run
-    $("#easelcan").css({
-      transform: "scale(0.8)",
-      top: "-210px",
-      left: "-400px",
-    });
-    initialised = true;
-    $("#easelcan").animate(
-      {
-        top: -400,
-        left: 0,
-        easing: "swing",
-      },
-      {
-        duration: 3000,
-        start: function () {
-          $("#easelcan").css({
-            transform: "scale(1)",
-            transition: "transform 3000ms",
-          });
-        },
-        complete: function () {
-          animationcomplete = true;
-        },
-      }
-    );
-  }
-  if (animationcomplete && initialised) {
-    var zoompadding = 100;
-    var VP = Object.create({});
-    VP.width = $("viewport").width();
-    VP.height = $("viewport").height();
-    VP.left = parseInt($("#easelcan").css("left"));
-    VP.top = parseInt($("#easelcan").css("top"));
-    var AW = Object.create({});
-    AW.leftpad = 100;
-    AW.rightpad = 200;
-    AW.toppad = 150;
-    AW.bottompad = 200;
-    var leftlimitmax = WIDTH - VP.width - zoompadding;
-    var leftlimitmin = zoompadding;
-    var toplimitmax = HEIGHT - VP.height - zoompadding;
-    var toplimitmin = zoompadding;
-    var leftposition = 0;
-    var topposition = 0;
+  const playerPosX = player.GetBody().GetPosition().x * SCALE;
+  const playerPosY = player.GetBody().GetPosition().y * SCALE;
 
-    var heroposx = player.GetBody().GetPosition().x * SCALE;
-    var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
+  const viewportWidth = stage.canvas.width;
+  const viewportHeight = stage.canvas.height;
 
-    if (heroposx >= VP.left + (VP.width - AW.rightpad) && ltr) {
-      leftposition = heroposx + AW.rightpad - VP.width;
-    } else if (heroposx <= -VP.left + AW.leftpad) {
-      leftposition = heroposx - AW.leftpad;
-    } else {
-      leftposition = -VP.left;
-    }
+  // Calculate camera offsets to keep player centered
+  const offsetX = viewportWidth / 2 - playerPosX;
+  const offsetY = viewportHeight / 2 - playerPosY;
 
-    if (leftposition < leftlimitmin) {
-      leftposition = leftlimitmin;
-    } else if (leftposition > leftlimitmax) {
-      leftposition = leftlimitmax;
-    }
+  // Set boundaries for the camera to avoid moving beyond the world
+  const minOffsetX = -WIDTH + viewportWidth;
+  const maxOffsetX = 0;
+  const minOffsetY = -HEIGHT + viewportHeight;
+  const maxOffsetY = 0;
 
-    $("#easelcan").css({ left: 0, transition: "left 34ms" });
+  // Clamp the camera position within the world limits
+  const finalOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, offsetX));
+  const finalOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, offsetY));
 
-    var heroposy = player.GetBody().GetPosition().y * SCALE;
-
-    if (heroposy >= VP.top + (VP.height - AW.rightpad)) {
-      topposition = heroposy + AW.bottompad - VP.height;
-    } else if (heroposy <= -VP.top + AW.toppad) {
-      topposition = heroposy - AW.toppad;
-    } else {
-      topposition = -VP.top;
-    }
-
-    if (topposition < toplimitmin) {
-      topposition = toplimitmin;
-    }
-    if (topposition > toplimitmax) {
-      topposition = toplimitmax;
-    }
-
-    $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
-
-    var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
-
-    console.log(herovelocity);
-
-    var scale =
-      herovelocity < 0.8 && herovelocity > 0.1
-        ? 1.1
-        : herovelocity > 1.1
-        ? 0.8
-        : 1;
-
-    $("#easelcan").css({
-      transform: "scale(" + scale + ")",
-      transition: "transform 3000ms",
-    });
-  }
+  // Apply the camera translation
+  stage.x = finalOffsetX;
+  stage.y = finalOffsetY;
 }
