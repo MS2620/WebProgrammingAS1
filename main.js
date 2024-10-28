@@ -1,52 +1,18 @@
 "use strict";
 
-// BOX2DWEB Definitions
-var b2Vec2 = Box2D.Common.Math.b2Vec2;
-var b2BodyDef = Box2D.Dynamics.b2BodyDef;
-var b2Body = Box2D.Dynamics.b2Body;
-var b2FixtureDef = Box2D.Dynamics.b2FixtureDef;
-var b2Fixture = Box2D.Dynamics.b2Fixture;
-var b2World = Box2D.Dynamics.b2World;
-var b2MassData = Box2D.Collision.Shapes.b2MassData;
-var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
-var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
-var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
+function loadMap(mapFilePath) {
+  fetch(mapFilePath) // Load the specified map file
+    .then((response) => response.text())
+    .then((data) => {
+      // Clear the current map entities if needed (optional)
+      clearCurrentMap();
+      processMap(data); // Process the new map data
+    })
+    .catch((error) => console.error("Error loading map:", error));
+}
 
-// Define the world
-var WIDTH = 2400;
-var HEIGHT = 800;
-var SCALE = 30;
-
-// Constants for grid dimensions
-const CELL_WIDTH = 50; // Width of each cell
-const CELL_HEIGHT = 50; // Height of each cell
-const ROWS = Math.floor(HEIGHT / CELL_HEIGHT); // Calculate number of rows
-const COLS = Math.floor(WIDTH / CELL_WIDTH); // Calculate number of columns
-
-var world = new b2World(new b2Vec2(0, 9.81), true);
-// Objects for destruction
-var destroylist = [];
-
-var player;
-var easelCan, easelctx, loader, stage, stagewidth, stageheight;
-
-var easelground,
-  easelground2,
-  easelground3,
-  easelsky,
-  easelsky2,
-  easelhill,
-  easealhill1,
-  easealhill2,
-  hero;
-var platforms = [];
-var easelPlatforms = [];
-
-// Load the map
-fetch("./assets/map.txt") // Assuming your map.txt is in the 'assets' folder
-  .then((response) => response.text())
-  .then((data) => processMap(data)) // Process the map data
-  .catch((error) => console.error("Error loading map:", error));
+// Load the map file
+loadMap("./assets/map.txt");
 
 // Process the map content
 function processMap(data) {
@@ -63,6 +29,12 @@ function processMap(data) {
         if (colStart === -1) {
           colStart = colIndex;
         }
+      } else if (char === "&") {
+        createPipe(rowIndex, colIndex);
+      } else if (char === "$") {
+        createShroom(rowIndex, colIndex);
+      } else if (char === "*") {
+        createEndPole(rowIndex, colIndex);
       } else {
         // If we reach the end of a platform, create it
         if (colStart !== -1) {
@@ -77,52 +49,168 @@ function processMap(data) {
         } else if (char === "#") {
           // Create ground
           createGround(rowIndex, colIndex);
+          groundTotal += colIndex;
         }
       }
     }
   });
 }
 
-function createGround(row, col) {
-  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
-  const positionY = HEIGHT - CELL_HEIGHT / 2; // Centered Y position for ground
+function clearCurrentMap() {
+  platforms.forEach((platform) => {
+    world.DestroyBody(platform.GetBody());
+  });
+  platforms = []; // Clear platforms array
+  pipes.forEach((pipe) => {
+    world.DestroyBody(pipe.GetBody());
+  });
+  pipes = []; // Clear pipes array
+  shrooms.forEach((shroom) => {
+    world.DestroyBody(shroom.GetBody());
+  });
+  shrooms = []; // Clear shrooms array
+  destroylist = []; // Clear destroylist array
+}
 
-  // Create ground object
+// BOX2DWEB Definitions
+var b2Vec2 = Box2D.Common.Math.b2Vec2;
+var b2BodyDef = Box2D.Dynamics.b2BodyDef;
+var b2Body = Box2D.Dynamics.b2Body;
+var b2FixtureDef = Box2D.Dynamics.b2FixtureDef;
+var b2Fixture = Box2D.Dynamics.b2Fixture;
+var b2World = Box2D.Dynamics.b2World;
+var b2MassData = Box2D.Collision.Shapes.b2MassData;
+var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
+var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
+var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
+
+var groundTotal = 0;
+
+// Define the world
+var WIDTH = 40000;
+var HEIGHT = 800;
+var SCALE = 30;
+
+// Constants for grid dimensions
+const CELL_WIDTH = 50; // Width of each cell
+const CELL_HEIGHT = 50; // Height of each cell
+const ROWS = Math.floor(HEIGHT / CELL_HEIGHT); // Calculate number of rows
+const COLS = Math.floor(WIDTH / CELL_WIDTH); // Calculate number of columns
+
+var world = new b2World(new b2Vec2(0, 9.81), false);
+// Objects for destruction
+var destroylist = [];
+const times = [];
+let fps;
+
+var player;
+var easelCan, easelctx, loader, stage, stagewidth, stageheight;
+
+var easelground,
+  easelsky,
+  easelsky2,
+  easelhill,
+  easealhill1,
+  easealhill2,
+  hero,
+  easelShroom;
+
+var pole;
+var platforms = [];
+var easelPlatforms = [];
+var pipes = [];
+var easelPipes = [];
+var shrooms = [];
+var easelShrooms = [];
+
+// Create the ground
+function createGround(row, col) {
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
+  const positionY = HEIGHT - CELL_HEIGHT / 2;
   return defineNewStatic(
-    1.0, // density
-    0, // friction
-    0.2, // restitution
-    positionX, // X position
-    positionY, // Y position
-    CELL_WIDTH, // width
-    CELL_HEIGHT, // height
-    "ground" + row + "_" + col, // Unique ID, to avoid duplicates
+    1.0,
+    0,
+    0.2,
+    positionX,
+    positionY,
+    CELL_WIDTH,
+    CELL_HEIGHT,
+    `ground_${row}_${col}`,
     0
   );
 }
 
 function createPlatforms(row, colStart, colEnd) {
-  // Define platform dimensions
   const platformHeight = 24;
-  const platformWidth = (colEnd - colStart + 1) * CELL_WIDTH; // Width based on the number of columns
+  const platformWidth = (colEnd - colStart + 1) * CELL_WIDTH;
+  const positionX = ((colStart + colEnd + 1) / 2) * CELL_WIDTH;
+  const positionY = row * CELL_HEIGHT + platformHeight / 2;
 
-  const positionX = ((colStart + colEnd) / 2) * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
-  const positionY = row * CELL_HEIGHT + platformHeight / 2; // Centered Y position for platform
-
-  // Create platform object
   const platform = defineNewStatic(
-    1.0, // density
-    0.5, // friction
-    0.2, // restitution
-    positionX, // X position
-    positionY, // Y position
-    platformWidth, // width
-    platformHeight, // height
-    "plat" + row + "_" + colStart + "_" + colEnd, // Unique ID
-    0 // angle
+    1.0,
+    0.5,
+    0.2,
+    positionX,
+    positionY,
+    platformWidth,
+    platformHeight,
+    `plat${row}_${colStart}_${colEnd}`,
+    0
   );
-
   platforms.push(platform);
+}
+
+function createEndPole(row, col) {
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
+  const positionY = row * CELL_HEIGHT + CELL_HEIGHT * 5.5;
+
+  pole = defineNewStatic(
+    1.0,
+    0,
+    0.2,
+    positionX,
+    positionY,
+    CELL_WIDTH,
+    CELL_HEIGHT,
+    `pole_${row}_${col}`,
+    0
+  );
+}
+
+function createPipe(row, col) {
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
+  const positionY = row * CELL_HEIGHT + CELL_HEIGHT * 5.5;
+
+  const pipe = defineNewStatic(
+    1.0,
+    0,
+    0.2,
+    positionX,
+    positionY,
+    CELL_WIDTH,
+    CELL_HEIGHT,
+    `pipe_${row}_${col}`,
+    0
+  );
+  pipes.push(pipe);
+}
+
+function createShroom(row, col) {
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
+  const positionY = row * CELL_HEIGHT + CELL_HEIGHT / 2;
+
+  const shroom = defineNewDynamicCircle(
+    1.0,
+    0.2,
+    0.1,
+    positionX,
+    positionY,
+    30,
+    CELL_WIDTH,
+    CELL_HEIGHT,
+    `shroom_${row}_${col}`
+  );
+  shrooms.push(shroom);
 }
 
 function placePlayer(row, col) {
@@ -143,12 +231,34 @@ function placePlayer(row, col) {
   );
 
   player.GetBody().IsFixedRotation = true; // Prevent rotation
-  return player;
 }
 
 function tick() {
-  update();
-  stage.update();
+  if (!paused) {
+    const now = performance.now();
+    while (times.length > 0 && times[0] <= now - 1000) {
+      times.shift();
+    }
+    times.push(now);
+
+    if (times.length < 45) {
+      fps = 30;
+    } else if (times.length < 75) {
+      fps = 60;
+    } else if (times.length < 105) {
+      fps = 90;
+    } else if (times.length < 130) {
+      fps = 120;
+    } else if (times.length < 160) {
+      fps = 144;
+    } else {
+      fps = 280;
+    }
+
+    $("#fps").html("Framerate: " + fps);
+    update();
+    stage.update();
+  }
 }
 
 // Update World Loop
@@ -162,22 +272,45 @@ function update() {
   hero.x = player.GetBody().GetPosition().x * SCALE;
   hero.y = player.GetBody().GetPosition().y * SCALE;
 
+  for (let i = 0; i < easelShrooms.length; i++) {
+    easelShrooms[i].x = shrooms[i].GetBody().GetPosition().x * SCALE;
+    easelShrooms[i].y = shrooms[i].GetBody().GetPosition().y * SCALE;
+  }
+
   world.DrawDebugData();
 
   world.ClearForces();
-  for (var i in destroylist) {
-    world.DestroyBody(destroylist[i]);
+
+  // Loop through destroylist in reverse
+  for (let i = destroylist.length - 1; i >= 0; i--) {
+    const body = destroylist[i];
+    const id = body.GetUserData().id;
+    world.DestroyBody(body); // Destroy the physics body
+
+    // Check if it is a shroom
+    if (id.includes("shroom")) {
+      // Find the corresponding index
+      const index = shrooms.findIndex((shroom) => shroom.GetBody() === body);
+      console.log(index);
+
+      // Remove corresponding easelShroom from the stage
+      if (easelShrooms[index]) {
+        stage.removeChild(easelShrooms[index]); // Remove from stage
+        easelShrooms.splice(index, 1); // Remove from easelShrooms array
+        shrooms.splice(index, 1); // Optionally remove from shrooms array too
+      } else {
+        console.warn(`No easelShroom found at index: ${index}`); // Debugging log
+      }
+    }
   }
+
   destroylist.length = 0;
+  stage.update(); // Update the stage to reflect changes
   followHero();
 }
 window.requestAnimationFrame(update);
 
 init();
-
-// Mushrooms
-// var mycircle = defineNewDynamicCircle(1.0, 0.2, 0.1, 400, 250, 30, "acircle");
-// var mycircle2 = defineNewDynamicCircle(1.0, 0.2, 0.1, 385, 140, 30, "bcircle");
 
 // Keyboard Controls
 const keydown = false;
@@ -210,24 +343,56 @@ $(document).keyup(function (e) {
  */
 var listener = new Box2D.Dynamics.b2ContactListener();
 listener.BeginContact = function (contact) {
-  console.log("Begin Contact:" + contact.GetFixtureA().GetBody().GetUserData());
+  const fixtureA = contact.GetFixtureA();
+  const fixtureB = contact.GetFixtureB();
+
+  const idA = fixtureA.GetBody().GetUserData().id;
+  const idB = fixtureB.GetBody().GetUserData().id;
+
+  // Get the positions of both bodies
+  const bodyA = fixtureA.GetBody();
+  const bodyB = fixtureB.GetBody();
+
+  const positionA = bodyA.GetPosition();
+  const positionB = bodyB.GetPosition();
+
+  console.log(idA, idB);
+
+  if (idA === "hero" && idB.includes("pole")) {
+    console.log("Map Done");
+    destroylist.push(contact.GetFixtureB().GetBody());
+
+    destroylist.push(contact.GetFixtureA().GetBody());
+
+    clearCurrentMap();
+    loadMap("./assets/map2.txt");
+  }
+
+  // Detect if one object is "shroom" and the other is "hero"
+  if (
+    (idA === "hero" && idB.includes("shroom")) ||
+    (idB.includes("shroom") && idB === "hero")
+  ) {
+    // Determine if the contact is from above
+    if (idA === "hero") {
+      // Check if hero is above shroom
+      if (positionA.y < positionB.y + 3) {
+        // Destroy shroom
+        destroylist.push(contact.GetFixtureB().GetBody());
+      }
+    } else {
+      // Check if hero is above shroom
+      if (positionB.y < positionA.y + 3) {
+        // Destroy shroom
+        destroylist.push(contact.GetFixtureA().GetBody());
+      }
+    }
+  }
 };
-listener.EndContact = function (contact) {
-  console.log("End Contact:" + contact.GetFixtureA().GetBody().GetUserData());
-};
+listener.EndContact = function (contact) {};
 listener.PostSolve = function (contact, impulse) {
   const fixa = contact.GetFixtureA().GetBody().GetUserData().id;
   const fixb = contact.GetFixtureB().GetBody().GetUserData().id;
-  console.log(
-    fixa + " hits " + fixb + " with imp:" + impulse.normalImpulses[0]
-  );
-
-  if (
-    (fixa === "hero" && fixb === "acircle") ||
-    (fixa === "hero" && fixb === "bcircle")
-  ) {
-    destroylist = destroylist.concat([contact.GetFixtureB().GetBody()]);
-  }
 };
 listener.PreSolve = function (contact, oldManifold) {};
 this.world.SetContactListener(listener);
@@ -366,7 +531,9 @@ function defineNewDynamicCircle(
   x,
   y,
   r,
-  objidconst
+  width,
+  height,
+  objid
 ) {
   const fixDef = new b2FixtureDef();
   fixDef.density = density;
@@ -376,9 +543,14 @@ function defineNewDynamicCircle(
   bodyDef.type = b2Body.b2_dynamicBody;
   bodyDef.position.x = x / SCALE;
   bodyDef.position.y = y / SCALE;
+  bodyDef.fixedRotation = true; // Set fixedRotation to true
   fixDef.shape = new b2CircleShape(r / SCALE);
-  const thisobj = world.CreateBody(bodyDef).CreateFixture(fixDef);
-  thisobj.GetBody().SetUserData({ id: objid });
+  const body = world.CreateBody(bodyDef);
+  const thisobj = body.CreateFixture(fixDef);
+
+  body.SetBullet(true); // Ensure continuous collision detection
+  body.SetUserData({ id: objid, x: x, y: y, width: width, height: height });
+
   return thisobj;
 }
 
@@ -407,7 +579,6 @@ function handleComplete() {
   const groundimg = loader.getResult("ground");
 
   // Create the sky
-
   easelsky = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
   easelsky2 = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
 
@@ -416,15 +587,11 @@ function handleComplete() {
   stage.addChild(easelsky, easelsky2);
 
   // Create the ground
-  easelground = makeHorizontalTile(loader.getResult("ground"), stagewidth, 64);
+  easelground = makeHorizontalTile(loader.getResult("ground"), WIDTH, 64);
   easelground.x = 0;
   easelground.y = HEIGHT - groundimg.height;
-  easelground2 = makeHorizontalTile(loader.getResult("ground"), stagewidth, 64);
-  easelground2.x = stagewidth;
-  easelground2.y = HEIGHT - groundimg.height;
 
   platforms.map((platform) => {
-    console.log(platform.GetBody().GetUserData());
     const platformWidth = platform.GetBody().GetUserData().width; // Define your platform width (same as in Box2D)
     const platformHeight = platform.GetBody().GetUserData().height; // Define your platform height (same as in Box2D)
 
@@ -446,6 +613,61 @@ function handleComplete() {
 
     // Add platform to the list
     easelPlatforms.push(allPlatforms);
+  });
+
+  // Create the pipes
+  pipes.map((pipe) => {
+    const pipeimg = loader.getResult("pipe");
+
+    const pipeWidth = pipeimg.width; // Define your platform width (same as in Box2D)
+    const pipeHeight = pipeimg.height; // Define your platform height (same as in Box2D)
+
+    // Create a new pipe visual
+    const pipeVisual = makeBitmap(pipeimg, pipeWidth, pipeHeight);
+
+    // Get Box2D platform's position (centered in Box2D)
+    const pipeBody = pipe.GetBody().GetUserData();
+    const pipeX = pipeBody.x; // Adjust for EaselJS (top-left alignment)
+    const pipeY = pipeBody.y + pipeimg.height / 15; // Adjust for EaselJS (top-left alignment)
+
+    // Position the EaselJS platform
+    pipeVisual.x = pipeX;
+    pipeVisual.y = pipeY;
+
+    // Add platform to the list
+    easelPipes.push(pipeVisual);
+  });
+
+  // Create the shrooms
+  shrooms.map((shroom) => {
+    console.log(shroom);
+    const shroomsimg = loader.getResult("shroom");
+
+    const shroomsWidth = shroomsimg.width; // Define your platform width (same as in Box2D)
+    const shroomsHeight = shroomsimg.height; // Define your platform height (same as in Box2D)
+
+    // Create a new shrooms visual
+    const shroomsVisual = makeBitmap(
+      shroomsimg,
+      shroomsWidth / 2,
+      shroomsHeight / 2
+    );
+
+    console.log(shroomsVisual);
+
+    // Get Box2D platform's position (centered in Box2D)
+    const shroomsBody = shroom.GetBody().GetUserData();
+    const shroomsX = shroomsBody.x; // Adjust for EaselJS (top-left alignment)
+    const shroomsY = shroomsBody.y + shroomsimg.height * 3.2; // Adjust for EaselJS (top-left alignment)
+
+    // Position the EaselJS platform
+    shroomsVisual.x = shroomsX;
+    shroomsVisual.y = shroomsY;
+
+    // Add platform to the list
+    easelShrooms.push(shroomsVisual);
+
+    stage.addChild(...easelShrooms);
   });
 
   // Create the hero
@@ -472,12 +694,12 @@ function handleComplete() {
 
   stage.addChild(
     easelground,
-    easelground2,
-    easelground3,
+    ...easelPipes,
     easealhill1,
     easealhill2,
     hero,
-    ...easelPlatforms
+    ...easelPlatforms,
+    easelShroom
   );
 
   createjs.Ticker.framerate = 60;
@@ -490,7 +712,7 @@ function init() {
   easelctx = easelCan.getContext("2d");
   stage = new createjs.Stage(easelCan);
   stage.snapPixelsEnabled = true;
-  stagewidth = stage.canvas.width;
+  stagewidth = WIDTH;
   stageheight = stage.canvas.height;
 
   const manifest = [
@@ -500,131 +722,18 @@ function init() {
     { src: "hill1.png", id: "hill1" },
     { src: "hill2.png", id: "hill2" },
     { src: "platform.png", id: "plat1" },
+    { src: "pipe.png", id: "pipe" },
+    { src: "shroom.png", id: "shroom" },
   ];
 
   loader = new createjs.LoadQueue(false);
   loader.addEventListener("complete", handleComplete);
   loader.loadManifest(manifest, true, "./assets/");
-
-  /*
-  Debug Draw
-  */
-  var debugDraw = new b2DebugDraw();
-  debugDraw.SetSprite(document.getElementById("b2dcan").getContext("2d"));
-  debugDraw.SetDrawScale(SCALE);
-  debugDraw.SetFillAlpha(0.3);
-  debugDraw.SetLineThickness(1.0);
-  debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
-  world.SetDebugDraw(debugDraw);
 }
 
 // VIEWPORT
 let initialised = false;
 let animationcomplete = false;
-
-// function followHero() {
-//   if (!initialised && !animationcomplete) {
-//     // Update condition to allow initial run
-//     $("#easelcan").css({
-//       transform: "scale(0.8)",
-//       top: "-210px",
-//       left: "-400px",
-//     });
-//     initialised = true;
-//     $("#easelcan").animate(
-//       {
-//         top: -400,
-//         left: 0,
-//         easing: "swing",
-//       },
-//       {
-//         duration: 3000,
-//         start: function () {
-//           $("#easelcan").css({
-//             transform: "scale(1)",
-//             transition: "transform 3000ms",
-//           });
-//         },
-//         complete: function () {
-//           animationcomplete = true;
-//         },
-//       }
-//     );
-//   }
-//   if (animationcomplete && initialised) {
-//     var zoompadding = 100;
-//     var VP = Object.create({});
-//     VP.width = $("viewport").width();
-//     VP.height = $("viewport").height();
-//     VP.left = parseInt($("#easelcan").css("left"));
-//     VP.top = parseInt($("#easelcan").css("top"));
-//     var AW = Object.create({});
-//     AW.leftpad = 100;
-//     AW.rightpad = 200;
-//     AW.toppad = 150;
-//     AW.bottompad = 200;
-//     var leftlimitmax = WIDTH - VP.width - zoompadding;
-//     var leftlimitmin = zoompadding;
-//     var toplimitmax = HEIGHT - VP.height - zoompadding;
-//     var toplimitmin = zoompadding;
-//     var leftposition = 0;
-//     var topposition = 0;
-
-//     var heroposx = player.GetBody().GetPosition().x * SCALE;
-//     var ltr = player.GetBody().GetLinearVelocity().x >= 0 ? true : false;
-
-//     if (heroposx >= VP.left + (VP.width - AW.rightpad) && ltr) {
-//       leftposition = heroposx + AW.rightpad - VP.width;
-//     } else if (heroposx <= -VP.left + AW.leftpad) {
-//       leftposition = heroposx - AW.leftpad;
-//     } else {
-//       leftposition = -VP.left;
-//     }
-
-//     if (leftposition < leftlimitmin) {
-//       leftposition = leftlimitmin;
-//     } else if (leftposition > leftlimitmax) {
-//       leftposition = leftlimitmax;
-//     }
-
-//     $("#easelcan").css({ left: 0, transition: "left 34ms" });
-
-//     var heroposy = player.GetBody().GetPosition().y * SCALE;
-
-//     if (heroposy >= VP.top + (VP.height - AW.rightpad)) {
-//       topposition = heroposy + AW.bottompad - VP.height;
-//     } else if (heroposy <= -VP.top + AW.toppad) {
-//       topposition = heroposy - AW.toppad;
-//     } else {
-//       topposition = -VP.top;
-//     }
-
-//     if (topposition < toplimitmin) {
-//       topposition = toplimitmin;
-//     }
-//     if (topposition > toplimitmax) {
-//       topposition = toplimitmax;
-//     }
-
-//     $("#easelcan").css({ toppad: -topposition, transition: "left 34ms" });
-
-//     var herovelocity = Math.abs(player.GetBody().GetLinearVelocity().x) / 10;
-
-//     console.log(herovelocity);
-
-//     var scale =
-//       herovelocity < 0.8 && herovelocity > 0.1
-//         ? 1.1
-//         : herovelocity > 1.1
-//         ? 0.8
-//         : 1;
-
-//     $("#easelcan").css({
-//       transform: "scale(" + scale + ")",
-//       transition: "transform 3000ms",
-//     });
-//   }
-// }
 
 function followHero() {
   const playerPosX = player.GetBody().GetPosition().x * SCALE;

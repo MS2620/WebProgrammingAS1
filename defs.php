@@ -1,4 +1,12 @@
 <?php
+define('DB_HOST', 'comp-server.uhi.ac.uk');
+define('DB_USER', 'sql08013495');
+define('DB_PASS', 'sql08013495');
+define('DB_NAME', 'sql08013495');
+
+function getDatabaseConnection() {
+    return new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+}
 
 define('REDIRECT_URI', 'http://localhost/');
 define('REDIRECT_TOKEN_URI', 'http://localhost/');

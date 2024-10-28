@@ -85,7 +85,7 @@ class OAuth {
     }
 
     public function generateLoginText(){
-        return '<p><a href="?action=login&provider='.$this->providername.'">Login with '.$this->providername.'</a></p>';
+        return '<button class="btn"><a href="?action=login&provider='.$this->providername.'">Login with '.$this->providername.'</a></button>';
     }
 
     public function getName(){
@@ -98,6 +98,38 @@ class OAuth {
 
     public function getUserId(){
         return $this->userinfo->id;
+    }
+
+    public function storeUserInDatabase() {
+        $db = getDatabaseConnection();
+        if ($db->connect_error) {
+            die("Connection failed: " . $db->connect_error);
+        }
+
+        // Extract user data
+        $userId = $this->getUserId();
+        $username = $this->getName();
+        $avatar = $this->getAvatar();
+
+        // Check if user already exists
+        $query = $db->prepare("SELECT * FROM users WHERE user_id = ?");
+        $query->bind_param('s', $userId);
+        $query->execute();
+        $result = $query->get_result();
+
+        if ($result->num_rows > 0) {
+            // User exists; update information
+            $stmt = $db->prepare("UPDATE users SET username = ?, avatar = ? WHERE user_id = ?");
+            $stmt->bind_param('sss', $username, $avatar, $userId);
+        } else {
+            // New user; insert into the database
+            $stmt = $db->prepare("INSERT INTO users (user_id, username, avatar) VALUES (?, ?, ?)");
+            $stmt->bind_param('sss', $userId, $username, $avatar);
+        }
+        
+        $stmt->execute();
+        $stmt->close();
+        $db->close();
     }
 }
 
@@ -151,7 +183,7 @@ class ProviderHandler {
     }
 
     public function generateLogout(){
-        return '<p><a href="?action=logout">Logout</a></p>';
+        return '<button class="btn"><a href="?action=logout">Logout</a></button>';
     }
 
     public function performAction(){
@@ -183,6 +215,7 @@ class ProviderHandler {
     public function processToken(){
         $this->status='Logged in';
         $this->providerInstance->getAuthConfirm($this->getSessionValue('access_token'));
+        $this->providerInstance->storeUserInDatabase();
     }
 
     public function addProvider($name, $cid, $secret) {
