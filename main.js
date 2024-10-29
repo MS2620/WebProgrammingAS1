@@ -1,18 +1,18 @@
 "use strict";
 
 function loadMap(mapFilePath) {
+  console.log("Loading map:", mapFilePath);
   fetch(mapFilePath) // Load the specified map file
     .then((response) => response.text())
     .then((data) => {
-      // Clear the current map entities if needed (optional)
-      clearCurrentMap();
       processMap(data); // Process the new map data
     })
     .catch((error) => console.error("Error loading map:", error));
 }
 
-// Load the map file
-loadMap("./assets/map.txt");
+if (!mapComplete) {
+  loadMap("./assets/map.txt"); // Load the initial map
+}
 
 // Process the map content
 function processMap(data) {
@@ -56,20 +56,52 @@ function processMap(data) {
   });
 }
 
-function clearCurrentMap() {
-  platforms.forEach((platform) => {
-    world.DestroyBody(platform.GetBody());
-  });
-  platforms = []; // Clear platforms array
-  pipes.forEach((pipe) => {
-    world.DestroyBody(pipe.GetBody());
-  });
-  pipes = []; // Clear pipes array
-  shrooms.forEach((shroom) => {
-    world.DestroyBody(shroom.GetBody());
-  });
-  shrooms = []; // Clear shrooms array
-  destroylist = []; // Clear destroylist array
+function clearCurrentMap(mapFilePath) {
+  // Clear Box2D world
+  let body = world.GetBodyList();
+  while (body) {
+    let nextBody = body.GetNext();
+    world.DestroyBody(body);
+    body = nextBody;
+  }
+
+  // Reinitialize Box2D world
+  world = new b2World(new b2Vec2(0, 9.81), false);
+
+  // Clear arrays holding game objects
+  destroylist = [];
+  pole = null;
+  player = null;
+
+  // Clear EaselJS objects from stage and reset arrays
+  for (let i = easelPlatforms.length - 1; i >= 0; i--) {
+    stage.removeChild(easelPlatforms[i]);
+  }
+  platforms = [];
+  easelPlatforms = [];
+
+  for (let i = easelPipes.length - 1; i >= 0; i--) {
+    stage.removeChild(easelPipes[i]);
+  }
+  pipes = [];
+  easelPipes = [];
+
+  for (let i = easelShrooms.length - 1; i >= 0; i--) {
+    stage.removeChild(easelShrooms[i]);
+  }
+  shrooms = [];
+  easelShrooms = [];
+
+  // Reset ground total if needed
+  groundTotal = 0;
+
+  // Update stage to reflect the cleared state
+  stage.update();
+
+  // Load new map if a path is provided
+  if (mapFilePath) {
+    loadMap(mapFilePath);
+  }
 }
 
 // BOX2DWEB Definitions
@@ -84,6 +116,7 @@ var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
 var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
 var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
 
+var mapComplete = false;
 var groundTotal = 0;
 
 // Define the world
@@ -291,7 +324,6 @@ function update() {
     if (id.includes("shroom")) {
       // Find the corresponding index
       const index = shrooms.findIndex((shroom) => shroom.GetBody() === body);
-      console.log(index);
 
       // Remove corresponding easelShroom from the stage
       if (easelShrooms[index]) {
@@ -356,16 +388,10 @@ listener.BeginContact = function (contact) {
   const positionA = bodyA.GetPosition();
   const positionB = bodyB.GetPosition();
 
-  console.log(idA, idB);
-
   if (idA === "hero" && idB.includes("pole")) {
     console.log("Map Done");
-    destroylist.push(contact.GetFixtureB().GetBody());
-
-    destroylist.push(contact.GetFixtureA().GetBody());
-
-    clearCurrentMap();
-    loadMap("./assets/map2.txt");
+    mapComplete = true;
+    clearCurrentMap("./assets/map2.txt");
   }
 
   // Detect if one object is "shroom" and the other is "hero"

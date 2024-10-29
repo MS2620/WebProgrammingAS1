@@ -158,7 +158,7 @@
           echo '<img id="user_img" src="' . $handler->providerInstance->getAvatar() . '" />';
           echo '<div id="play_logout">';
           echo $handler->generateLogout();
-          echo '<button class="btn" onClick="startGame()">Play</button>';
+          echo '<button class="btn" id="play" onClick="startGame()">Play</button>';
           echo '</div>';
         }
       ?>
