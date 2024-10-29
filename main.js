@@ -116,7 +116,6 @@ let fps;
 
 // Initialize score variables
 var score = 0; // Current score
-var finalScore = 0; // Final score at the end of the game
 
 // Player related variables
 var player; // Variable to hold the player object
@@ -460,8 +459,13 @@ listener.BeginContact = function (contact) {
       }
 
       // Update final score in localStorage
-      let currentScore = parseInt(localStorage.getItem("final_score")) || 0;
-      localStorage.setItem("final_score", currentScore + score);
+      let currentScore = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("final_score="))
+        ?.split("=")[1];
+
+      var newScore = parseInt(currentScore) + score;
+      document.cookie = `final_score = ${newScore}`;
 
       // Hide UI elements for the win screen
       document.getElementById("easelcan").style.display = "none";
@@ -482,30 +486,16 @@ listener.BeginContact = function (contact) {
       document.getElementById("game_over").style.display = "flex";
 
       // Display the final score
-      const finalScore = parseInt(localStorage.getItem("final_score"));
-      finalScore += score; // Add the current score to the final score
-      document.getElementById("final_score").innerHTML =
-        "Your Final Score was: " + finalScore;
+      // Update final score in localStorage
+      let currentScore = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("final_score="))
+        ?.split("=")[1];
 
-      // Submit the score to the server
-      fetch("Highscore.class.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          username: username, // Player's username
-          avatar: avatar, // Player's avatar
-          score: finalScore, // Final score to submit
-        }),
-      })
-        .then((response) => response.text())
-        .then((result) => {
-          console.log("Score submission response:", result); // Log server response
-        })
-        .catch((error) => {
-          console.error("Error submitting score:", error); // Log submission error
-        });
+      let finalScore = currentScore;
+      finalScore += score; // Add the current score to the final score
+      $("final_score").html("Your Final Score was: " + finalScore);
+
     }
   }
 
@@ -732,6 +722,7 @@ function makeHorizontalTile(ldrimg, fillw, tilew) {
 }
 
 // Function to handle completion of asset loading
+
 function handleComplete() {
   const groundimg = loader.getResult("ground"); // Get the ground image from the loader
 

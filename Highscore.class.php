@@ -25,7 +25,7 @@ class HighScoreHandler
 
         // Execute the statement and return a success or error message
         if ($stmt->execute()) {
-            return "Score saved successfully.";
+            return;
         } else {
             return "Error saving score: " . $stmt->error; // Return error message if execution fails
         }

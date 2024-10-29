@@ -10,9 +10,9 @@
 
   <?php
 require_once 'OAuth.class.php';
+$handler = new ProviderHandler();
 require_once 'Highscore.class.php';
 $highscoreHandler = new HighScoreHandler();
-$handler = new ProviderHandler();
 $env = parse_ini_file('.env');
 $discordcid = $env['DISCORD_CID'];
 $discordcs = $env['DISCORD_CSECRET'];
@@ -21,6 +21,11 @@ $githubcs = $env['GITHUB_CSECRET'];
 $handler->addProvider('Discord', $discordcid, $discordcs);
 $handler->addProvider('Github', $githubcid, $githubcs);
 $handler->performAction();
+
+// if (!isset($_COOKIE['final_score'])) {
+//     setcookie('final_score', 0);
+// }
+
 ?>
 
   <style>
@@ -338,13 +343,26 @@ if ($handler->status != 'Logged in') {
     }
 
     function restartGame() {
-      document.getElementById('game_over').style.display = 'none';
-      document.getElementById('game_content').style.display = 'block';
-
-      localStorage.setItem("map_level", "1");
-      localStorage.setItem("final_score", "0");
-      window.location.reload();
-    }
+    fetch('submit_score.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            username: <?php echo json_encode($handler->providerInstance->getName()); ?>,
+            avatar: <?php echo json_encode($handler->providerInstance->getAvatar()); ?>,
+            score: <?php echo json_encode($_COOKIE['final_score']); ?>
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            localStorage.setItem("map_level", "1");
+            window.location.href = "index.php";
+        } else {
+            console.error('Error storing score');
+        }
+    })
+    .catch(error => console.error('Request failed', error));
+}
 
     function backToMenu() {
       document.getElementById('game_content').style.display = 'none';
