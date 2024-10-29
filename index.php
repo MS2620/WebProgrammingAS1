@@ -169,6 +169,7 @@
       <p id="fps"></p>
       <button id="back_btn" onClick="backToMenu()">< Back</button>
       <canvas id="easelcan" width="1200" height="800"></canvas>
+      <canvas id="b2dcan" width="1200" height="800"></canvas>
     </div>
   </div>
   
