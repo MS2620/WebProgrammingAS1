@@ -1,347 +1,369 @@
 "use strict";
 
+// Initialize sound effects for the game
+const shroomSound = new Audio("./assets/eat.mp3"); // Sound for eating a mushroom
+const winSound = new Audio("./assets/win.mp3"); // Sound for winning the game
+
+// Function to load a map from the specified file path
 function loadMap(mapFilePath) {
-  console.log("Loading map:", mapFilePath);
-  fetch(mapFilePath) // Load the specified map file
-    .then((response) => response.text())
+  fetch(mapFilePath) // Fetch the map file from the server
+    .then((response) => response.text()) // Convert the response to text
     .then((data) => {
-      processMap(data); // Process the new map data
+      processMap(data); // Process the loaded map data
+      startTimer(); // Start the timer for the level
     })
-    .catch((error) => console.error("Error loading map:", error));
+    .catch((error) => console.error("Error loading map:", error)); // Log any errors
 }
 
-if (!mapComplete) {
-  loadMap("./assets/map.txt"); // Load the initial map
-}
-
-// Process the map content
+// Function to process the content of the map
 function processMap(data) {
-  const lines = data.split("\n"); // Split content into lines
+  const lines = data.split("\n"); // Split the map data into lines
 
+  // Iterate through each line of the map
   lines.forEach((line, rowIndex) => {
-    let colStart = -1; // Track the start of a platform
+    let colStart = -1; // Initialize variable to track the start of a platform
 
+    // Iterate through each character in the line
     for (let colIndex = 0; colIndex < line.length; colIndex++) {
-      const char = line[colIndex];
+      const char = line[colIndex]; // Get the character at the current column
 
       if (char === "%") {
-        // If this is the start of a platform, mark the start
+        // If the character is "%", it marks the start of a platform
         if (colStart === -1) {
-          colStart = colIndex;
+          colStart = colIndex; // Mark the start position
         }
       } else if (char === "&") {
-        createPipe(rowIndex, colIndex);
+        createPipe(rowIndex, colIndex); // Create a pipe at the specified position
       } else if (char === "$") {
-        createShroom(rowIndex, colIndex);
+        createShroom(rowIndex, colIndex); // Create a mushroom at the specified position
       } else if (char === "*") {
-        createEndPole(rowIndex, colIndex);
+        createEndPole(rowIndex, colIndex); // Create an end pole at the specified position
       } else {
-        // If we reach the end of a platform, create it
+        // If we reach the end of a platform
         if (colStart !== -1) {
-          createPlatforms(rowIndex, colStart, colIndex - 1); // Pass start and end columns
-          colStart = -1; // Reset the start
+          createPlatforms(rowIndex, colStart, colIndex - 1); // Create the platform from start to end
+          colStart = -1; // Reset the start position
         }
 
         // Process other characters
         if (char === "P") {
-          // Place player
+          // If the character is "P", place the player
           placePlayer(rowIndex, colIndex);
         } else if (char === "#") {
-          // Create ground
+          // If the character is "#", create ground
           createGround(rowIndex, colIndex);
-          groundTotal += colIndex;
+          groundTotal += colIndex; // Update the total ground value
         }
       }
     }
   });
 }
 
-function clearCurrentMap(mapFilePath) {
-  // Clear Box2D world
-  let body = world.GetBodyList();
-  while (body) {
-    let nextBody = body.GetNext();
-    world.DestroyBody(body);
-    body = nextBody;
-  }
-
-  // Reinitialize Box2D world
-  world = new b2World(new b2Vec2(0, 9.81), false);
-
-  // Clear arrays holding game objects
-  destroylist = [];
-  pole = null;
-  player = null;
-
-  // Clear EaselJS objects from stage and reset arrays
-  for (let i = easelPlatforms.length - 1; i >= 0; i--) {
-    stage.removeChild(easelPlatforms[i]);
-  }
-  platforms = [];
-  easelPlatforms = [];
-
-  for (let i = easelPipes.length - 1; i >= 0; i--) {
-    stage.removeChild(easelPipes[i]);
-  }
-  pipes = [];
-  easelPipes = [];
-
-  for (let i = easelShrooms.length - 1; i >= 0; i--) {
-    stage.removeChild(easelShrooms[i]);
-  }
-  shrooms = [];
-  easelShrooms = [];
-
-  // Reset ground total if needed
-  groundTotal = 0;
-
-  // Update stage to reflect the cleared state
-  stage.update();
-
-  // Load new map if a path is provided
-  if (mapFilePath) {
-    loadMap(mapFilePath);
-  }
+// Function to start the timer for the current level
+function startTimer() {
+  levelStartTime = performance.now(); // Record the start time
+  levelTimer = setInterval(() => {
+    timeSpent = Math.floor((performance.now() - levelStartTime) / 1000); // Update time spent every second
+  }, 1000); // Timer interval set to 1 second
 }
+
+// Load the map file based on the current map level stored in local storage
+const mapToLoad = "./assets/map" + localStorage.getItem("map_level") + ".txt"; // Construct the file path
+loadMap(mapToLoad); // Load the map
 
 // BOX2DWEB Definitions
-var b2Vec2 = Box2D.Common.Math.b2Vec2;
-var b2BodyDef = Box2D.Dynamics.b2BodyDef;
-var b2Body = Box2D.Dynamics.b2Body;
-var b2FixtureDef = Box2D.Dynamics.b2FixtureDef;
-var b2Fixture = Box2D.Dynamics.b2Fixture;
-var b2World = Box2D.Dynamics.b2World;
-var b2MassData = Box2D.Collision.Shapes.b2MassData;
-var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
-var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
-var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
+// Import necessary Box2D classes for physics simulation
+var b2Vec2 = Box2D.Common.Math.b2Vec2; // Vector2 class for 2D coordinates
+var b2BodyDef = Box2D.Dynamics.b2BodyDef; // Definition class for body
+var b2Body = Box2D.Dynamics.b2Body; // Body class representing physical objects
+var b2FixtureDef = Box2D.Dynamics.b2FixtureDef; // Definition class for fixtures
+var b2Fixture = Box2D.Dynamics.b2Fixture; // Fixture class for collision shapes
+var b2World = Box2D.Dynamics.b2World; // World class for managing the simulation
+var b2MassData = Box2D.Collision.Shapes.b2MassData; // Class for mass properties
+var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape; // Class for polygon shapes
+var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape; // Class for circle shapes
+var b2DebugDraw = Box2D.Dynamics.b2DebugDraw; // Class for debugging visualizations
+var b2DestroyWorld = Box2D.Dynamics.b2DestroyWorld; // Class for destroying worlds
 
-var mapComplete = false;
+// Initialize the total ground variable
 var groundTotal = 0;
 
-// Define the world
-var WIDTH = 40000;
-var HEIGHT = 800;
-var SCALE = 30;
+// Define the world dimensions and scaling factor
+var WIDTH = 40000; // Width of the world
+var HEIGHT = 800; // Height of the world
+var SCALE = 30; // Scaling factor for converting Box2D units to screen units
 
 // Constants for grid dimensions
-const CELL_WIDTH = 50; // Width of each cell
-const CELL_HEIGHT = 50; // Height of each cell
-const ROWS = Math.floor(HEIGHT / CELL_HEIGHT); // Calculate number of rows
-const COLS = Math.floor(WIDTH / CELL_WIDTH); // Calculate number of columns
+const CELL_WIDTH = 50; // Width of each cell in the grid
+const CELL_HEIGHT = 50; // Height of each cell in the grid
+const ROWS = Math.floor(HEIGHT / CELL_HEIGHT); // Calculate the number of rows based on height
+const COLS = Math.floor(WIDTH / CELL_WIDTH); // Calculate the number of columns based on width
 
+// Create a new Box2D world with gravity vector (0, 9.81) and sleep mode disabled
 var world = new b2World(new b2Vec2(0, 9.81), false);
-// Objects for destruction
+
+// Array to hold objects marked for destruction
 var destroylist = [];
+
+// Array to hold timestamps for various events
 const times = [];
+
+// Variable to hold frames per second (FPS) value
 let fps;
 
-var player;
-var easelCan, easelctx, loader, stage, stagewidth, stageheight;
+// Initialize score variables
+var score = 0; // Current score
+var finalScore = 0; // Final score at the end of the game
 
-var easelground,
-  easelsky,
-  easelsky2,
-  easelhill,
-  easealhill1,
-  easealhill2,
-  hero,
-  easelShroom;
+// Player related variables
+var player; // Variable to hold the player object
 
-var pole;
-var platforms = [];
-var easelPlatforms = [];
-var pipes = [];
-var easelPipes = [];
-var shrooms = [];
-var easelShrooms = [];
+// Timer variables for level duration
+let levelStartTime; // Time when the level started
+let timeSpent = 0; // Total time spent in the level
+let levelTimer; // Timer reference for updating the time spent
 
+// Variables for EaselJS components
+var easelCan, easelctx, loader, stage, stagewidth, stageheight; // Canvas and rendering variables
+
+// Variables for different game objects
+var easelground, // Ground object
+  easelsky, // Sky background object
+  easelsky2, // Second sky background object
+  easelhill, // Hill object
+  easealhill1, // First hill object
+  easealhill2, // Second hill object
+  hero, // Player character
+  easelShroom, // Mushroom object
+  easelPole; // Pole object
+
+// Arrays to hold various game objects
+var pole; // Variable to hold a pole object
+var platforms = []; // Array to hold platform objects
+var easelPlatforms = []; // Array to hold EaselJS platforms
+var pipes = []; // Array to hold pipe objects
+var easelPipes = []; // Array to hold EaselJS pipes
+var shrooms = []; // Array to hold mushroom objects
+var easelShrooms = []; // Array to hold EaselJS mushrooms
 // Create the ground
 function createGround(row, col) {
-  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
-  const positionY = HEIGHT - CELL_HEIGHT / 2;
+  // Calculate the X and Y positions for the ground based on column and row
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
+  const positionY = HEIGHT - CELL_HEIGHT / 2; // Y position at the bottom of the screen
+
+  // Define a new static ground body and return it
   return defineNewStatic(
-    1.0,
-    0,
-    0.2,
-    positionX,
-    positionY,
-    CELL_WIDTH,
-    CELL_HEIGHT,
-    `ground_${row}_${col}`,
-    0
+    1.0, // Density
+    0, // Friction
+    0.2, // Restitution
+    positionX, // X position
+    positionY, // Y position
+    CELL_WIDTH, // Width of the ground
+    CELL_HEIGHT, // Height of the ground
+    `ground_${row}_${col}`, // Unique object ID
+    0 // User data (not used)
   );
 }
 
+// Create a platform spanning from colStart to colEnd in the specified row
 function createPlatforms(row, colStart, colEnd) {
-  const platformHeight = 24;
-  const platformWidth = (colEnd - colStart + 1) * CELL_WIDTH;
-  const positionX = ((colStart + colEnd + 1) / 2) * CELL_WIDTH;
-  const positionY = row * CELL_HEIGHT + platformHeight / 2;
+  const platformHeight = 24; // Height of the platform
+  const platformWidth = (colEnd - colStart + 1) * CELL_WIDTH; // Width based on start and end columns
+  const positionX = ((colStart + colEnd + 1) / 2) * CELL_WIDTH; // Centered X position of the platform
+  const positionY = row * CELL_HEIGHT + platformHeight / 2; // Centered Y position of the platform
 
+  // Define a new static platform body and push it to the platforms array
   const platform = defineNewStatic(
-    1.0,
-    0.5,
-    0.2,
-    positionX,
-    positionY,
-    platformWidth,
-    platformHeight,
-    `plat${row}_${colStart}_${colEnd}`,
-    0
+    1.0, // Density
+    0.5, // Friction
+    0.2, // Restitution
+    positionX, // X position
+    positionY, // Y position
+    platformWidth, // Width of the platform
+    platformHeight, // Height of the platform
+    `plat${row}_${colStart}_${colEnd}`, // Unique object ID
+    0 // User data (not used)
   );
-  platforms.push(platform);
+  platforms.push(platform); // Add the platform to the platforms array
 }
 
+// Create an end pole at the specified row and column
 function createEndPole(row, col) {
-  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
-  const positionY = row * CELL_HEIGHT + CELL_HEIGHT * 5.5;
+  // Calculate the X and Y positions for the end pole
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
+  const positionY = row * CELL_HEIGHT + CELL_HEIGHT * 5.5; // Y position higher in the screen
 
+  // Define a new static pole body
   pole = defineNewStatic(
-    1.0,
-    0,
-    0.2,
-    positionX,
-    positionY,
-    CELL_WIDTH,
-    CELL_HEIGHT,
-    `pole_${row}_${col}`,
-    0
+    1.0, // Density
+    0, // Friction
+    0.2, // Restitution
+    positionX, // X position
+    positionY, // Y position
+    CELL_WIDTH, // Width of the pole
+    CELL_HEIGHT, // Height of the pole
+    `pole_${row}_${col}`, // Unique object ID
+    0 // User data (not used)
   );
 }
 
+// Create a pipe at the specified row and column
 function createPipe(row, col) {
-  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
-  const positionY = row * CELL_HEIGHT + CELL_HEIGHT * 5.5;
+  // Calculate the X and Y positions for the pipe
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
+  const positionY = row * CELL_HEIGHT + CELL_HEIGHT * 5.5; // Y position higher in the screen
 
+  // Define a new static pipe body and push it to the pipes array
   const pipe = defineNewStatic(
-    1.0,
-    0,
-    0.2,
-    positionX,
-    positionY,
-    CELL_WIDTH,
-    CELL_HEIGHT,
-    `pipe_${row}_${col}`,
-    0
+    1.0, // Density
+    0, // Friction
+    0.2, // Restitution
+    positionX, // X position
+    positionY, // Y position
+    CELL_WIDTH, // Width of the pipe
+    CELL_HEIGHT, // Height of the pipe
+    `pipe_${row}_${col}`, // Unique object ID
+    0 // User data (not used)
   );
-  pipes.push(pipe);
+  pipes.push(pipe); // Add the pipe to the pipes array
 }
 
+// Create a shroom (dynamic object) at the specified row and column
 function createShroom(row, col) {
-  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2;
-  const positionY = row * CELL_HEIGHT + CELL_HEIGHT / 2;
+  // Calculate the X and Y positions for the shroom
+  const positionX = col * CELL_WIDTH + CELL_WIDTH / 2; // Centered X position
+  const positionY = row * CELL_HEIGHT + CELL_HEIGHT / 2; // Centered Y position
 
+  // Define a new dynamic circle for the shroom and push it to the shrooms array
   const shroom = defineNewDynamicCircle(
-    1.0,
-    0.2,
-    0.1,
-    positionX,
-    positionY,
-    30,
-    CELL_WIDTH,
-    CELL_HEIGHT,
-    `shroom_${row}_${col}`
+    1.0, // Density
+    0.2, // Friction
+    0.1, // Restitution
+    positionX, // X position
+    positionY, // Y position
+    30, // Radius of the shroom
+    CELL_WIDTH, // Width (for scaling)
+    CELL_HEIGHT, // Height (for scaling)
+    `shroom_${row}_${col}` // Unique object ID
   );
-  shrooms.push(shroom);
+  shrooms.push(shroom); // Add the shroom to the shrooms array
 }
 
+// Place the player character at the specified row and column
 function placePlayer(row, col) {
   // Define player dimensions
-  const playerWidth = 72;
-  const playerHeight = 140;
+  const playerWidth = 72; // Width of the player
+  const playerHeight = 140; // Height of the player
 
-  // Create player
+  // Create player with defined properties
   player = defineNewDynamic(
-    1.0, // density
-    0, // friction
-    0.1, // restitution
+    1.0, // Density
+    0, // Friction
+    0.1, // Restitution
     col * CELL_WIDTH + CELL_WIDTH / 2, // Centered X position
     row * CELL_HEIGHT + CELL_HEIGHT / 2, // Centered Y position
-    playerWidth, // width
-    playerHeight, // height
-    "hero" // object ID
+    playerWidth, // Width of the player
+    playerHeight, // Height of the player
+    "hero" // Object ID
   );
 
-  player.GetBody().IsFixedRotation = true; // Prevent rotation
+  // Prevent the player from rotating
+  player.GetBody().IsFixedRotation = true; // Ensure player maintains upright position
 }
 
+// Main game loop function that updates the game state and renders the frame
 function tick() {
   if (!paused) {
-    const now = performance.now();
+    // Check if the game is not paused
+    const now = performance.now(); // Get the current time
+
+    // Remove timestamps older than one second from the times array
     while (times.length > 0 && times[0] <= now - 1000) {
-      times.shift();
+      times.shift(); // Remove the oldest timestamp
     }
-    times.push(now);
 
+    times.push(now); // Add the current timestamp to the array
+
+    // Determine the frames per second (FPS) based on the number of timestamps
     if (times.length < 45) {
-      fps = 30;
+      fps = 30; // If less than 45 frames, set FPS to 30
     } else if (times.length < 75) {
-      fps = 60;
+      fps = 60; // If less than 75 frames, set FPS to 60
     } else if (times.length < 105) {
-      fps = 90;
+      fps = 90; // If less than 105 frames, set FPS to 90
     } else if (times.length < 130) {
-      fps = 120;
+      fps = 120; // If less than 130 frames, set FPS to 120
     } else if (times.length < 160) {
-      fps = 144;
+      fps = 144; // If less than 160 frames, set FPS to 144
     } else {
-      fps = 280;
+      fps = 280; // If 160 frames or more, set FPS to 280
     }
 
-    $("#fps").html("Framerate: " + fps);
-    update();
-    stage.update();
+    // Update the HTML elements with the current FPS and score
+    $("#fps").html("Framerate: " + fps); // Display the current FPS
+    $("#score").html("Score: " + score); // Display the current score
+    update(); // Call the update function to update game state
+    stage.update(); // Update the stage to reflect changes
   }
 }
 
 // Update World Loop
 function update() {
+  // Step the Box2D world simulation
   world.Step(
-    1 / 60, // framerate
-    10, // velocity iterations
-    10 // position iterations
+    1 / 60, // Time step (1/60 seconds for 60 FPS)
+    10, // Velocity iterations
+    10 // Position iterations
   );
 
-  hero.x = player.GetBody().GetPosition().x * SCALE;
-  hero.y = player.GetBody().GetPosition().y * SCALE;
+  // Update the hero's position based on the Box2D body position
+  hero.x = player.GetBody().GetPosition().x * SCALE; // Update X position
+  hero.y = player.GetBody().GetPosition().y * SCALE; // Update Y position
 
+  // Update each shroom's position on the easel
   for (let i = 0; i < easelShrooms.length; i++) {
-    easelShrooms[i].x = shrooms[i].GetBody().GetPosition().x * SCALE;
-    easelShrooms[i].y = shrooms[i].GetBody().GetPosition().y * SCALE;
+    easelShrooms[i].x = shrooms[i].GetBody().GetPosition().x * SCALE; // Update X position
+    easelShrooms[i].y = shrooms[i].GetBody().GetPosition().y * SCALE; // Update Y position
   }
 
+  // Draw debug data for the Box2D world (if enabled)
   world.DrawDebugData();
 
+  // Clear forces in the Box2D world to prepare for the next step
   world.ClearForces();
 
-  // Loop through destroylist in reverse
+  // Loop through the destroylist in reverse to avoid index issues
   for (let i = destroylist.length - 1; i >= 0; i--) {
-    const body = destroylist[i];
-    const id = body.GetUserData().id;
+    const body = destroylist[i]; // Get the physics body to destroy
+    const id = body.GetUserData().id; // Get the user data ID of the body
     world.DestroyBody(body); // Destroy the physics body
 
-    // Check if it is a shroom
+    // Check if the destroyed body is a shroom
     if (id.includes("shroom")) {
-      // Find the corresponding index
+      // Find the index of the corresponding shroom in the shrooms array
       const index = shrooms.findIndex((shroom) => shroom.GetBody() === body);
 
-      // Remove corresponding easelShroom from the stage
+      // Remove the corresponding easelShroom from the stage
       if (easelShrooms[index]) {
-        stage.removeChild(easelShrooms[index]); // Remove from stage
-        easelShrooms.splice(index, 1); // Remove from easelShrooms array
+        stage.removeChild(easelShrooms[index]); // Remove from the stage
+        easelShrooms.splice(index, 1); // Remove from the easelShrooms array
         shrooms.splice(index, 1); // Optionally remove from shrooms array too
       } else {
-        console.warn(`No easelShroom found at index: ${index}`); // Debugging log
+        console.warn(`No easelShroom found at index: ${index}`); // Log a warning if not found
       }
     }
   }
 
+  // Clear the destroylist for the next update
   destroylist.length = 0;
   stage.update(); // Update the stage to reflect changes
-  followHero();
+  followHero(); // Call followHero to update the camera/hero view
 }
+
+// Request the next animation frame to continue the update loop
 window.requestAnimationFrame(update);
 
+// Initialize the game
 init();
 
 // Keyboard Controls
@@ -374,47 +396,151 @@ $(document).keyup(function (e) {
  * Listeners
  */
 var listener = new Box2D.Dynamics.b2ContactListener();
+// Begin contact listener for collision events
 listener.BeginContact = function (contact) {
-  const fixtureA = contact.GetFixtureA();
-  const fixtureB = contact.GetFixtureB();
+  const fixtureA = contact.GetFixtureA(); // Get the first fixture in the contact
+  const fixtureB = contact.GetFixtureB(); // Get the second fixture in the contact
 
-  const idA = fixtureA.GetBody().GetUserData().id;
-  const idB = fixtureB.GetBody().GetUserData().id;
+  const idA = fixtureA.GetBody().GetUserData().id; // Get the ID of the first body
+  const idB = fixtureB.GetBody().GetUserData().id; // Get the ID of the second body
 
-  // Get the positions of both bodies
-  const bodyA = fixtureA.GetBody();
-  const bodyB = fixtureB.GetBody();
+  let hasTriggered = false; // Flag to check if the event has already been triggered
 
-  const positionA = bodyA.GetPosition();
-  const positionB = bodyB.GetPosition();
+  // Check if the hero collides with a pole
+  if (idA === "hero" && idB.includes("pole") && !hasTriggered) {
+    hasTriggered = true; // Set the flag to true to prevent re-triggering
 
-  if (idA === "hero" && idB.includes("pole")) {
-    console.log("Map Done");
-    mapComplete = true;
-    clearCurrentMap("./assets/map2.txt");
+    winSound.load(); // Load the win sound
+    // Add event listeners for when the sound is ready or if there's an error
+    winSound.addEventListener(
+      "canplaythrough",
+      () => {
+        console.log("Sound is ready to play"); // Log when sound is ready
+      },
+      false
+    );
+    winSound.addEventListener(
+      "error",
+      () => {
+        console.error("Error loading sound"); // Log if there's an error loading the sound
+      },
+      false
+    );
+
+    winSound.volume = 1; // Set the volume for the sound
+    // Play the sound and handle any errors
+    winSound.play().catch((error) => {
+      console.error("Error playing sound:", error);
+    });
+
+    clearInterval(levelTimer); // Stop the level timer
+
+    // Check if the current map level is less than 3
+    if (parseInt(localStorage.getItem("map_level")) < 3) {
+      // Increment the map level in localStorage
+      localStorage.setItem(
+        "map_level",
+        parseInt(localStorage.getItem("map_level")) + 1
+      );
+
+      // Calculate score based on time spent
+      if (timeSpent < 30) {
+        score = score * 5; // High multiplier for quick completion
+      } else if (timeSpent < 60) {
+        score = score * 3; // Medium multiplier
+      } else if (timeSpent < 90) {
+        score = score * 2; // Lower multiplier
+      } else if (timeSpent < 120) {
+        score = score * 1.5; // Slight bonus
+      } else if (timeSpent < 150) {
+        score = score * 1.2; // Minimal bonus
+      }
+
+      // Update final score in localStorage
+      let currentScore = parseInt(localStorage.getItem("final_score")) || 0;
+      localStorage.setItem("final_score", currentScore + score);
+
+      // Hide UI elements for the win screen
+      document.getElementById("easelcan").style.display = "none";
+      document.getElementById("back_btn").style.display = "none";
+      document.getElementById("score").style.display = "none";
+      document.getElementById("fps").style.display = "none";
+      document.getElementById("map_win").style.display = "flex";
+
+      // Display time and score on the win screen
+      $("#time").html("You completed the level in: " + timeSpent + " seconds.");
+      $("#lvl_score").html("Your score was: " + score);
+    } else {
+      // If map level is 3 or higher, show the game over screen
+      document.getElementById("easelcan").style.display = "none";
+      document.getElementById("back_btn").style.display = "none";
+      document.getElementById("score").style.display = "none";
+      document.getElementById("fps").style.display = "none";
+      document.getElementById("game_over").style.display = "flex";
+
+      // Display the final score
+      const finalScore = parseInt(localStorage.getItem("final_score"));
+      document.getElementById("final_score").innerHTML =
+        "Your Final Score was: " + finalScore;
+
+      // Submit the score to the server
+      fetch("Highscore.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          username: username, // Player's username
+          avatar: avatar, // Player's avatar
+          score: finalScore, // Final score to submit
+        }),
+      })
+        .then((response) => response.text())
+        .then((result) => {
+          console.log("Score submission response:", result); // Log server response
+        })
+        .catch((error) => {
+          console.error("Error submitting score:", error); // Log submission error
+        });
+    }
   }
 
-  // Detect if one object is "shroom" and the other is "hero"
+  // Check for collisions between hero and shrooms
   if (
     (idA === "hero" && idB.includes("shroom")) ||
-    (idB.includes("shroom") && idB === "hero")
+    (idB.includes("shroom") && idA === "hero")
   ) {
-    // Determine if the contact is from above
-    if (idA === "hero") {
-      // Check if hero is above shroom
-      if (positionA.y < positionB.y + 3) {
-        // Destroy shroom
-        destroylist.push(contact.GetFixtureB().GetBody());
-      }
-    } else {
-      // Check if hero is above shroom
-      if (positionB.y < positionA.y + 3) {
-        // Destroy shroom
-        destroylist.push(contact.GetFixtureA().GetBody());
-      }
+    shroomSound.load(); // Load the shroom sound
+    // Add event listeners for sound readiness and error
+    shroomSound.addEventListener(
+      "canplaythrough",
+      () => {
+        console.log("Sound is ready to play"); // Log when sound is ready
+      },
+      false
+    );
+    shroomSound.addEventListener(
+      "error",
+      () => {
+        console.error("Error loading sound"); // Log if there's an error loading the sound
+      },
+      false
+    );
+
+    shroomSound.volume = 1; // Set the volume for the shroom sound
+    // Play the sound and handle any errors
+    shroomSound.play().catch((error) => {
+      console.error("Error playing sound:", error);
+    });
+
+    // If the hero is involved in the collision with the shroom
+    if (idA === "hero" || idB === "hero") {
+      score += 10; // Increase score by 10 for collecting the shroom
+      destroylist.push(contact.GetFixtureB().GetBody()); // Mark the shroom for destruction
     }
   }
 };
+
 listener.EndContact = function (contact) {};
 listener.PostSolve = function (contact, impulse) {
   const fixa = contact.GetFixtureA().GetBody().GetUserData().id;
@@ -476,7 +602,7 @@ function goup() {
     player
       .GetBody()
       .SetLinearVelocity(
-        new b2Vec2(player.GetBody().GetLinearVelocity().x, -40)
+        new b2Vec2(player.GetBody().GetLinearVelocity().x, -20)
       );
   }
 }
@@ -601,146 +727,158 @@ function makeHorizontalTile(ldrimg, fillw, tilew) {
   return theimage;
 }
 
+// Function to handle completion of asset loading
 function handleComplete() {
-  const groundimg = loader.getResult("ground");
+  const groundimg = loader.getResult("ground"); // Get the ground image from the loader
 
   // Create the sky
-  easelsky = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
-  easelsky2 = makeBitmap(loader.getResult("sky"), stagewidth, stageheight);
+  easelsky = makeBitmap(loader.getResult("sky"), stagewidth, stageheight); // Create a bitmap for the sky
+  easelsky2 = makeBitmap(loader.getResult("sky"), stagewidth, stageheight); // Second sky layer for parallax effect
 
+  // Set the position of the sky images
   easelsky.x = 0;
-  easelsky2.x = stagewidth;
-  stage.addChild(easelsky, easelsky2);
+  easelsky2.x = stagewidth; // Position the second sky to the right of the first
+  stage.addChild(easelsky, easelsky2); // Add the sky layers to the stage
 
   // Create the ground
-  easelground = makeHorizontalTile(loader.getResult("ground"), WIDTH, 64);
-  easelground.x = 0;
-  easelground.y = HEIGHT - groundimg.height;
+  easelground = makeHorizontalTile(loader.getResult("ground"), WIDTH, 64); // Create a horizontal ground tile
+  easelground.x = 0; // Set ground position
+  easelground.y = HEIGHT - groundimg.height; // Position ground at the bottom of the canvas
 
+  // Create platforms from Box2D bodies
   platforms.map((platform) => {
-    const platformWidth = platform.GetBody().GetUserData().width; // Define your platform width (same as in Box2D)
-    const platformHeight = platform.GetBody().GetUserData().height; // Define your platform height (same as in Box2D)
+    const platformWidth = platform.GetBody().GetUserData().width; // Get width from Box2D body
+    const platformHeight = platform.GetBody().GetUserData().height; // Get height from Box2D body
 
-    // Create a new platform visual
+    // Create a visual representation of the platform
     const allPlatforms = makeHorizontalTile(
-      loader.getResult("plat1"),
-      platformWidth * 1.25,
+      loader.getResult("plat1"), // Load platform image
+      platformWidth * 1.25, // Scale width for aesthetics
       platformHeight
     );
 
-    // Get Box2D platform's position (centered in Box2D)
+    // Get the Box2D platform's position and adjust for EaselJS alignment
     const platformBody = platform.GetBody().GetUserData();
-    const platformX = platformBody.x - platformWidth; // Adjust for EaselJS (top-left alignment)
-    const platformY = platformBody.y - platformHeight; // Adjust for EaselJS (top-left alignment)
+    const platformX = platformBody.x - platformWidth; // Center alignment
+    const platformY = platformBody.y - platformHeight; // Center alignment
 
-    // Position the EaselJS platform
+    // Position the platform visual
     allPlatforms.x = platformX;
     allPlatforms.y = platformY;
 
-    // Add platform to the list
+    // Add the platform visual to the list
     easelPlatforms.push(allPlatforms);
   });
 
-  // Create the pipes
+  // Create pipes from Box2D bodies
   pipes.map((pipe) => {
-    const pipeimg = loader.getResult("pipe");
+    const pipeimg = loader.getResult("pipe"); // Load pipe image
 
-    const pipeWidth = pipeimg.width; // Define your platform width (same as in Box2D)
-    const pipeHeight = pipeimg.height; // Define your platform height (same as in Box2D)
+    const pipeWidth = pipeimg.width; // Get pipe width
+    const pipeHeight = pipeimg.height; // Get pipe height
 
-    // Create a new pipe visual
+    // Create a visual representation of the pipe
     const pipeVisual = makeBitmap(pipeimg, pipeWidth, pipeHeight);
 
-    // Get Box2D platform's position (centered in Box2D)
+    // Get the Box2D pipe's position and adjust for EaselJS alignment
     const pipeBody = pipe.GetBody().GetUserData();
-    const pipeX = pipeBody.x; // Adjust for EaselJS (top-left alignment)
-    const pipeY = pipeBody.y + pipeimg.height / 15; // Adjust for EaselJS (top-left alignment)
+    const pipeX = pipeBody.x; // Direct alignment
+    const pipeY = pipeBody.y + pipeimg.height / 15; // Adjust to fit visually
 
-    // Position the EaselJS platform
+    // Position the pipe visual
     pipeVisual.x = pipeX;
     pipeVisual.y = pipeY;
 
-    // Add platform to the list
+    // Add the pipe visual to the list
     easelPipes.push(pipeVisual);
   });
 
-  // Create the shrooms
+  // Create shrooms from Box2D bodies
   shrooms.map((shroom) => {
-    console.log(shroom);
-    const shroomsimg = loader.getResult("shroom");
+    const shroomsimg = loader.getResult("shroom"); // Load shroom image
 
-    const shroomsWidth = shroomsimg.width; // Define your platform width (same as in Box2D)
-    const shroomsHeight = shroomsimg.height; // Define your platform height (same as in Box2D)
+    const shroomsWidth = shroomsimg.width; // Get shroom width
+    const shroomsHeight = shroomsimg.height; // Get shroom height
 
-    // Create a new shrooms visual
+    // Create a visual representation of the shroom
     const shroomsVisual = makeBitmap(
       shroomsimg,
-      shroomsWidth / 2,
-      shroomsHeight / 2
+      shroomsWidth / 2, // Scale down width
+      shroomsHeight / 2 // Scale down height
     );
 
-    console.log(shroomsVisual);
-
-    // Get Box2D platform's position (centered in Box2D)
+    // Get the Box2D shroom's position and adjust for EaselJS alignment
     const shroomsBody = shroom.GetBody().GetUserData();
-    const shroomsX = shroomsBody.x; // Adjust for EaselJS (top-left alignment)
-    const shroomsY = shroomsBody.y + shroomsimg.height * 3.2; // Adjust for EaselJS (top-left alignment)
+    const shroomsX = shroomsBody.x; // Direct alignment
+    const shroomsY = shroomsBody.y + shroomsimg.height * 3.2; // Adjust to fit visually
 
-    // Position the EaselJS platform
+    // Position the shroom visual
     shroomsVisual.x = shroomsX;
     shroomsVisual.y = shroomsY;
 
-    // Add platform to the list
+    // Add the shroom visual to the list
     easelShrooms.push(shroomsVisual);
 
+    // Add all shroom visuals to the stage
     stage.addChild(...easelShrooms);
   });
 
-  // Create the hero
+  // Create the pole visual
+  easelPole = makeBitmap(loader.getResult("pole"), 64, 128); // Load pole image and set dimensions
+  easelPole.x = pole.GetBody().GetUserData().x; // Set X position from Box2D body
+  easelPole.y = pole.GetBody().GetUserData().y - (groundimg.height + 3); // Set Y position below the ground
+
+  // Create the hero sprite
   const spritesheet = new createjs.SpriteSheet({
-    framerate: 60,
-    images: [loader.getResult("hero")],
+    framerate: 60, // Set framerate for animations
+    images: [loader.getResult("hero")], // Load hero image
     frames: {
       regX: 82,
       regY: 144,
       width: 165,
       height: 292,
-      count: 64,
+      count: 64, // Total number of frames in the sprite sheet
     },
     animations: {
-      stand: [56, 57, "stand", 1],
+      stand: [56, 57, "stand", 1], // Animation definitions
       run: [0, 34, "run", 1.5],
       jump: [26, 63, "stand", 1],
       drop: [49, 57, "stand", 1],
     },
   });
 
-  hero = new createjs.Sprite(spritesheet, "stand");
-  hero.snapToPixel = true;
+  // Create the hero sprite instance
+  hero = new createjs.Sprite(spritesheet, "stand"); // Start with the "stand" animation
+  hero.snapToPixel = true; // Align the sprite to pixel grid
 
+  // Add all visual elements to the stage
   stage.addChild(
-    easelground,
-    ...easelPipes,
-    easealhill1,
-    easealhill2,
-    hero,
-    ...easelPlatforms,
-    easelShroom
+    easelground, // Add ground
+    ...easelPipes, // Add all pipes
+    easealhill1, // Add first hill
+    easealhill2, // Add second hill
+    hero, // Add hero
+    ...easelPlatforms, // Add all platforms
+    easelShroom, // Add shrooms
+    easelPole // Add pole
   );
 
-  createjs.Ticker.framerate = 60;
-  createjs.Ticker.timingMode = createjs.Ticker.RAF;
-  createjs.Ticker.addEventListener("tick", tick);
+  // Set up the ticker for animations
+  createjs.Ticker.framerate = 60; // Set the ticker to 60 fps
+  createjs.Ticker.timingMode = createjs.Ticker.RAF; // Use requestAnimationFrame for timing
+  createjs.Ticker.addEventListener("tick", tick); // Add the tick function for updating the stage
 }
 
+// Function to initialize the game
 function init() {
-  easelCan = document.getElementById("easelcan");
-  easelctx = easelCan.getContext("2d");
-  stage = new createjs.Stage(easelCan);
-  stage.snapPixelsEnabled = true;
-  stagewidth = WIDTH;
-  stageheight = stage.canvas.height;
+  easelCan = document.getElementById("easelcan"); // Get the canvas element
+  easelctx = easelCan.getContext("2d"); // Get the 2D rendering context
+  stage = new createjs.Stage(easelCan); // Create a new EaselJS stage
+  stage.snapPixelsEnabled = true; // Enable pixel snapping for better rendering
+  stagewidth = WIDTH; // Set the stage width
+  stageheight = stage.canvas.height; // Set the stage height
 
+  // Manifest of assets to load
   const manifest = [
     { src: "hero.png", id: "hero" },
     { src: "ground.png", id: "ground" },
@@ -750,50 +888,44 @@ function init() {
     { src: "platform.png", id: "plat1" },
     { src: "pipe.png", id: "pipe" },
     { src: "shroom.png", id: "shroom" },
+    { src: "pole.png", id: "pole" },
   ];
 
+  // Create a new loader for assets
   loader = new createjs.LoadQueue(false);
-  loader.addEventListener("complete", handleComplete);
-  loader.loadManifest(manifest, true, "./assets/");
-
-  /*
-  Debug Draw
-  */
-  var debugDraw = new b2DebugDraw();
-  debugDraw.SetSprite(document.getElementById("b2dcan").getContext("2d"));
-  debugDraw.SetDrawScale(SCALE);
-  debugDraw.SetFillAlpha(0.3);
-  debugDraw.SetLineThickness(1.0);
-  debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
-  world.SetDebugDraw(debugDraw);
+  loader.addEventListener("complete", handleComplete); // Add event listener for when loading completes
+  loader.loadManifest(manifest, true, "./assets/"); // Load the asset manifest
 }
 
 // VIEWPORT
 let initialised = false;
 let animationcomplete = false;
 
+// Function to adjust the camera to follow the hero (player)
 function followHero() {
-  const playerPosX = player.GetBody().GetPosition().x * SCALE;
-  const playerPosY = player.GetBody().GetPosition().y * SCALE;
+  // Get the player's current position in the world, scaled to canvas size
+  const playerPosX = player.GetBody().GetPosition().x * SCALE; // Scale X position
+  const playerPosY = player.GetBody().GetPosition().y * SCALE; // Scale Y position
 
-  const viewportWidth = stage.canvas.width;
-  const viewportHeight = stage.canvas.height;
+  // Get the dimensions of the viewport (canvas)
+  const viewportWidth = stage.canvas.width; // Width of the canvas
+  const viewportHeight = stage.canvas.height; // Height of the canvas
 
-  // Calculate camera offsets to keep player centered
-  const offsetX = viewportWidth / 2 - playerPosX;
-  const offsetY = viewportHeight / 2 - playerPosY;
+  // Calculate camera offsets to keep the player centered in the viewport
+  const offsetX = viewportWidth / 2 - playerPosX; // Horizontal offset
+  const offsetY = viewportHeight / 2 - playerPosY; // Vertical offset
 
-  // Set boundaries for the camera to avoid moving beyond the world
-  const minOffsetX = -WIDTH + viewportWidth;
-  const maxOffsetX = 0;
-  const minOffsetY = -HEIGHT + viewportHeight;
-  const maxOffsetY = 0;
+  // Set boundaries for the camera to avoid moving beyond the world limits
+  const minOffsetX = -WIDTH + viewportWidth; // Minimum X offset (left boundary)
+  const maxOffsetX = 0; // Maximum X offset (right boundary)
+  const minOffsetY = -HEIGHT + viewportHeight; // Minimum Y offset (top boundary)
+  const maxOffsetY = 0; // Maximum Y offset (bottom boundary)
 
-  // Clamp the camera position within the world limits
-  const finalOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, offsetX));
-  const finalOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, offsetY));
+  // Clamp the calculated camera position within the world limits
+  const finalOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, offsetX)); // Final X offset within bounds
+  const finalOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, offsetY)); // Final Y offset within bounds
 
-  // Apply the camera translation
-  stage.x = finalOffsetX;
-  stage.y = finalOffsetY;
+  // Apply the camera translation to the stage to keep the player centered
+  stage.x = finalOffsetX; // Set the X position of the stage
+  stage.y = finalOffsetY; // Set the Y position of the stage
 }
