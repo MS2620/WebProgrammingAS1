@@ -68,6 +68,9 @@ function startTimer() {
 }
 
 // Load the map file based on the current map level stored in local storage
+if (!localStorage.getItem("map_level")) {
+  localStorage.setItem("map_level", 1); // Set the default map level to 1
+}
 const mapToLoad = "./assets/map" + localStorage.getItem("map_level") + ".txt"; // Construct the file path
 loadMap(mapToLoad); // Load the map
 
@@ -480,11 +483,12 @@ listener.BeginContact = function (contact) {
 
       // Display the final score
       const finalScore = parseInt(localStorage.getItem("final_score"));
+      finalScore += score; // Add the current score to the final score
       document.getElementById("final_score").innerHTML =
         "Your Final Score was: " + finalScore;
 
       // Submit the score to the server
-      fetch("Highscore.php", {
+      fetch("Highscore.class.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
